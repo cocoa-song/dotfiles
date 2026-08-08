@@ -224,9 +224,11 @@ require("zen-mode").setup({
     width = 88, -- 한 줄에 들어갈 글자 수. 한글 기준 44자 남짓
     options = {
       number = false,
-      relativenumber = true,
+      relativenumber = false, -- 집중 모드에선 줄번호를 아예 숨긴다
       cursorline = false,
       signcolumn = "no",
+      foldcolumn = "0",
+      list = false,
     },
   },
   plugins = {
