@@ -235,18 +235,54 @@ brew trust laishulu/homebrew    # 서드파티 탭이라 신뢰 승인 필요
 brew install macism
 ```
 
-동작: `InsertLeave` 에 현재 입력기를 기억하고 ABC 로 전환 → `InsertEnter` 에 복원.
-전부 `vim.system` 비동기라 모드 전환이 느려지지 않는다.
+#### ⚠ 속 입력기(SokIM) 사용자는 이걸 먼저 꺼야 한다
 
-한글 입력기 ID 는 **하드코딩하지 않고 런타임에 감지**한다.
-(이 환경은 속 입력기 `com.kiding.inputmethod.sok.mode` — Apple 두벌식이 아니다)
+메뉴바 **속 입력기(한/A) 아이콘 → "ABC 입력기 제한" 체크 해제.**
+
+SokIM 의 `SuppressABC` 기능은 입력 소스가 ABC/US 가 되면 **~100ms 뒤 자기 자신을
+다시 선택**한다. 실측:
+
+```
+macism com.apple.keylayout.ABC
+  t+0ms     com.apple.keylayout.ABC          ← 전환 성공
+  t+150ms   com.kiding.inputmethod.sok.mode  ← SokIM 이 되돌림
+  t+1000ms  com.kiding.inputmethod.sok.mode
+
+대조군 (Apple 두벌식)
+  t+0ms     com.apple.inputmethod.Korean.2SetKorean
+  t+1000ms  com.apple.inputmethod.Korean.2SetKorean   ← 유지
+```
+
+macism 도, 권한도 문제가 아니다. 이게 켜져 있으면 **어떤 설정으로도 고칠 수 없다.**
+`:ImeDoctor` 가 실제로 전환을 시도해보고 되돌려지는지 검사해 알려준다.
+
+#### 동작
+
+`InsertLeave` → 영문 강제 / `InsertEnter` → 직전 한글 입력기 복원.
+한글 입력기 ID 는 하드코딩하지 않고 런타임에 감지한다
+(이 환경은 속 입력기 `com.kiding.inputmethod.sok.mode`).
+
+**단일 슬롯 큐**로 명령을 합친다. 예전 구현은 `InsertLeave` 가
+"현재 입력기 읽기 → 그 결과로 전환" 2단 비동기라 빠른 `i<Esc>` 반복에서
+콜백 순서가 뒤집혔다(실측: InsertEnter 복원이 5.9ms, 뒤늦은 영문 전환이 48.7ms).
+지금은 마지막으로 원하는 상태 하나만 남겨 적용하므로 역전이 구조적으로 불가능하고,
+핫 패스에서 조회를 없애 `InsertLeave` 당 프로세스가 2개 → 1개다.
 
 | 명령 | 동작 |
 |---|---|
-| `:ImeDoctor` | 현재 입력기 · 복원 대상 · 권한 안내 |
+| `:ImeDoctor` | 실제 전환 테스트 — SuppressABC 켜져 있으면 잡아낸다 |
 | `:ImeRestoreToggle` | Insert 진입 시 한글 복원 끄기/켜기 |
+| `:ImeSync` | 지금 쓰는 한글 입력기를 복원 대상으로 재감지 |
 
-전환이 안 되면 **시스템 설정 → 개인정보 보호 및 보안 → 손쉬운 사용**에서 터미널 앱에 권한을 준다.
+#### 남은 한계
+
+macism 은 SokIM 을 `TISIntendedLanguage=en` 때문에 **비-CJK 로 오분류**해서
+복원 시 우회(임시 창으로 포커스를 뺏었다 돌려주기)를 건너뛴다. 그 결과
+macOS TIS 버그(메뉴바 아이콘만 바뀌고 실제 입력은 직전 입력기)에 노출될 수 있다.
+인서트 모드인데 영문이 나오면 `:ImeRestoreToggle` 로 복원을 끄고
+한글은 손으로 켜는 단방향 운용을 권한다.
+
+
 
 ---
 
