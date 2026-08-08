@@ -59,7 +59,7 @@ markdown  markdown_inline  lua  vim  vimdoc  query  c
 
 ---
 
-## 2. 플러그인 11개
+## 2. 플러그인 12개
 
 ### ★ render-markdown.nvim — 이 설정의 핵심
 
