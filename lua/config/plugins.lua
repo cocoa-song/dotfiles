@@ -18,11 +18,8 @@ vim.pack.add({
   -- ★ 마크다운 인라인 렌더링 — 이 설정의 핵심
   { src = gh("MeanderingProgrammer/render-markdown.nvim") },
 
-  -- 터미널 인라인 이미지 (snacks 의 image 모듈 하나만 켠다)
+  -- 인라인 이미지 + 집중 글쓰기 (snacks 의 image · zen 모듈만 켠다)
   { src = gh("folke/snacks.nvim") },
-
-  -- 집중 글쓰기
-  { src = gh("folke/zen-mode.nvim") },
 
   -- 자동완성 (v1 계열 고정 — v2 는 파괴적 변경 진행 중)
   { src = gh("saghen/blink.cmp"), version = vim.version.range("1.*") },
@@ -129,6 +126,29 @@ require("snacks").setup({
       end
     end,
   },
+
+  -- ------------------------------------------------------ 집중 글쓰기
+  -- zen-mode.nvim 대신 snacks 의 zen 모듈. 플러그인이 하나 줄고 dim 이 딸려온다.
+  zen = {
+    toggles = { dim = true }, -- 커서가 있는 문단만 밝게, 나머지는 흐리게
+    show = { statusline = false, tabline = false },
+    win = {
+      -- ★ 고정폭(88)을 쓰면 터미널이 좁을 때 화면을 꽉 채워 여백이 사라진다.
+      --   비율로 주면 어떤 폭에서도 좌우 여백이 남는다.
+      width = 0.6,
+      height = 0,
+      border = "hpad", -- 본문과 창 가장자리 사이 1칸 (snacks.win 내장 패딩 보더)
+      backdrop = { transparent = true, blend = 30 },
+      wo = {
+        number = false,
+        relativenumber = false,
+        cursorline = false,
+        signcolumn = "no",
+        foldcolumn = "0",
+        list = false,
+      },
+    },
+  },
 })
 
 -- ------------------------------------------------------------ 자동완성
@@ -215,23 +235,5 @@ telescope.setup({
   pickers = {
     find_files = { find_command = { "fd", "--type", "f", "--strip-cwd-prefix" } },
     buffers = { sort_lastused = true, ignore_current_buffer = true },
-  },
-})
-
--- ------------------------------------------------------- 집중 글쓰기
-require("zen-mode").setup({
-  window = {
-    width = 88, -- 한 줄에 들어갈 글자 수. 한글 기준 44자 남짓
-    options = {
-      number = false,
-      relativenumber = false, -- 집중 모드에선 줄번호를 아예 숨긴다
-      cursorline = false,
-      signcolumn = "no",
-      foldcolumn = "0",
-      list = false,
-    },
-  },
-  plugins = {
-    options = { laststatus = 0 },
   },
 })

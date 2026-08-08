@@ -4,7 +4,7 @@
 2026-08-08 기준으로 생태계를 재평가해 처음부터 다시 구성.
 
 - **Neovim**: 0.12.4 (Homebrew)
-- **플러그인**: 12개 (약 40MB) — 내장 `vim.pack` 으로 관리
+- **플러그인**: 11개 (약 40MB) — 내장 `vim.pack` 으로 관리
 - **시작 시간**: 약 80ms (지연 로딩 없이 전부 즉시 로드)
 
 ```
@@ -59,7 +59,7 @@ markdown  markdown_inline  lua  vim  vimdoc  query  c
 
 ---
 
-## 2. 플러그인 12개
+## 2. 플러그인 11개
 
 ### ★ render-markdown.nvim — 이 설정의 핵심
 
@@ -156,13 +156,13 @@ LSP 서버·포매터 **바이너리 설치기**. 설정은 하지 않는다 —
 - 색 테마는 `tokyonight-day`(밝음). 어두운 쪽은 `plugins.lua` 에서 `-night` / `-storm`
 - lualine 은 마크다운 버퍼에서 **단어 수**를 표시한다 (한글 포함)
 
-### snacks.nvim (image 모듈만)
+### snacks.nvim (image · zen 모듈만)
 
 folke · [repo](https://github.com/folke/snacks.nvim)
 
 터미널 안에서 마크다운의 이미지를 **실제로 보여준다.** Kitty 그래픽 프로토콜 사용.
 
-snacks 는 모듈 모음이지만 `image` 하나만 켰다 (setup 에 안 적은 모듈은 비활성).
+snacks 는 모듈 모음이지만 `image` 와 `zen` 만 켰다 (setup 에 안 적은 모듈은 비활성).
 
 - 터미널: **Ghostty** ✅ (kitty · wezterm 도 지원)
 - `magick` (ImageMagick) 필요 — PNG 외 형식 변환용.
@@ -170,11 +170,18 @@ snacks 는 모듈 모음이지만 `image` 하나만 켰다 (setup 에 안 적은
 - `resolve` 콜백으로 Obsidian 임베드 `![[해시.png]]` 를 볼트 `attachments/` 에서 찾도록 했다
   (기본 동작은 문서 기준 상대경로만 본다)
 
-### zen-mode.nvim
+#### zen 모듈 — 집중 글쓰기
 
-`392K` · folke · [repo](https://github.com/folke/zen-mode.nvim)
+`<leader>z` 토글. zen-mode.nvim 을 쓰다가 이쪽으로 옮겼다(플러그인 1개 감소 + `dim` 획득).
 
-`<leader>z` — 본문을 88칸 폭으로 화면 중앙에 놓고 UI 를 숨긴다. 긴 글 쓸 때.
+| 설정 | 값 | 이유 |
+|---|---|---|
+| `width` | `0.6` (비율) | **고정폭(88)이면 터미널이 좁을 때 화면을 꽉 채워 여백이 사라진다.** 비율이면 어떤 폭에서도 좌우 여백이 남는다 |
+| `border` | `hpad` | snacks.win 내장 패딩 보더 — 본문과 창 가장자리 사이 1칸 |
+| `toggles.dim` | on | 커서가 있는 문단만 밝게, 나머지는 흐리게 |
+
+> 플로팅 창 방식은 안쪽 패딩이 최대 1칸이다. 더 넉넉한 좌우 여백을 원하면
+> `no-neck-pain.nvim`(빈 사이드 버퍼로 진짜 패딩을 만드는 전용 플러그인)이 대안.
 
 ---
 

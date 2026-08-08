@@ -39,7 +39,9 @@ map("n", "<leader>ng", function()
 end, { desc = "노트 내용 검색" })
 
 -- --------------------------------------------------------- 글쓰기
-map("n", "<leader>z", "<cmd>ZenMode<CR>", { desc = "집중 모드" })
+map("n", "<leader>z", function()
+  Snacks.zen()
+end, { desc = "집중 모드" })
 map("n", "<leader>cf", function()
   require("conform").format({ async = true, lsp_format = "fallback" })
 end, { desc = "포맷" })
