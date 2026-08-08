@@ -4,7 +4,7 @@
 2026-08-08 기준으로 생태계를 재평가해 처음부터 다시 구성.
 
 - **Neovim**: 0.12.4 (Homebrew)
-- **플러그인**: 11개 (약 28MB) — 내장 `vim.pack` 으로 관리
+- **플러그인**: 12개 (약 40MB) — 내장 `vim.pack` 으로 관리
 - **시작 시간**: 약 80ms (지연 로딩 없이 전부 즉시 로드)
 
 ```
@@ -156,6 +156,20 @@ LSP 서버·포매터 **바이너리 설치기**. 설정은 하지 않는다 —
 - 색 테마는 `tokyonight-day`(밝음). 어두운 쪽은 `plugins.lua` 에서 `-night` / `-storm`
 - lualine 은 마크다운 버퍼에서 **단어 수**를 표시한다 (한글 포함)
 
+### snacks.nvim (image 모듈만)
+
+folke · [repo](https://github.com/folke/snacks.nvim)
+
+터미널 안에서 마크다운의 이미지를 **실제로 보여준다.** Kitty 그래픽 프로토콜 사용.
+
+snacks 는 모듈 모음이지만 `image` 하나만 켰다 (setup 에 안 적은 모듈은 비활성).
+
+- 터미널: **Ghostty** ✅ (kitty · wezterm 도 지원)
+- `magick` (ImageMagick) 필요 — PNG 외 형식 변환용.
+  이 볼트는 jpg 2321 / png 1958 / webp 19 / gif 9 라 필수다
+- `resolve` 콜백으로 Obsidian 임베드 `![[해시.png]]` 를 볼트 `attachments/` 에서 찾도록 했다
+  (기본 동작은 문서 기준 상대경로만 본다)
+
 ### zen-mode.nvim
 
 `392K` · folke · [repo](https://github.com/folke/zen-mode.nvim)
@@ -198,6 +212,7 @@ Grammarly 대안, Automattic 관리)인데 **한국어를 지원하지 않아** 
 | `ripgrep` (rg) | ✅ 설치됨 | telescope 내용 검색 |
 | `fd` | ✅ 설치됨 | telescope 파일 찾기 |
 | `node` | ✅ v22.23.1 | prettier 실행 |
+| `magick` | ✅ 7.1.2 | snacks.image 형식 변환 (`brew install imagemagick`) |
 | `git` | ✅ | vim.pack 이 플러그인을 git 으로 관리 |
 | **`macism`** | ✅ 설치됨 | **한영 자동전환** ↓ |
 

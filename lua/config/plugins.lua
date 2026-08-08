@@ -18,6 +18,9 @@ vim.pack.add({
   -- ★ 마크다운 인라인 렌더링 — 이 설정의 핵심
   { src = gh("MeanderingProgrammer/render-markdown.nvim") },
 
+  -- 터미널 인라인 이미지 (snacks 의 image 모듈 하나만 켠다)
+  { src = gh("folke/snacks.nvim") },
+
   -- 집중 글쓰기
   { src = gh("folke/zen-mode.nvim") },
 
@@ -94,6 +97,38 @@ require("render-markdown").setup({
   quote = { icon = "▍" },
   pipe_table = { preset = "round" },
   link = { wiki = { icon = "󰌷 ", highlight = "RenderMarkdownWikiLink" } },
+})
+
+-- ------------------------------------------------------- 인라인 이미지
+-- snacks.nvim 은 모듈 모음이다. image 하나만 켜고 나머지는 전부 끈다.
+-- (setup 에 안 적은 모듈은 기본적으로 비활성이라 별도 조치 불필요)
+--
+-- 요구사항
+--   · 터미널이 Kitty 그래픽 프로토콜 지원 — Ghostty ✅ (kitty·wezterm 도 가능)
+--   · ImageMagick — PNG 외 형식 변환용. 이 볼트는 jpg 2321 / webp 19 / gif 9 라 필수
+require("snacks").setup({
+  image = {
+    enabled = true,
+    doc = {
+      enabled = true, -- 마크다운 문서 안 이미지 표시
+      inline = true, -- 텍스트 흐름 안에 바로 렌더 (false 면 별도 창)
+      float = true, -- 인라인이 불가능한 상황에선 떠있는 창으로
+      max_width = 60,
+      max_height = 20,
+    },
+    -- ![[해시.png]] 형태의 Obsidian 임베드도 인식하도록
+    -- 첨부 폴더를 검색 경로에 넣는다
+    resolve = function(path, src)
+      -- src 가 확장자만 있는 위키 임베드면 볼트 attachments 에서 찾는다
+      if src:match("^[^/]+%.%w+$") then
+        local vault = vim.env.HOME .. "/Library/Mobile Documents/iCloud~md~obsidian/Documents"
+        local candidate = vault .. "/attachments/" .. src
+        if vim.uv.fs_stat(candidate) then
+          return candidate
+        end
+      end
+    end,
+  },
 })
 
 -- ------------------------------------------------------------ 자동완성
