@@ -1,0 +1,8 @@
+.DS_Store
+
+# vim 이 사용자 단어를 추가할 때 만드는 파일 (기기별로 다름)
+spell/*.add
+spell/*.spl
+
+# harper-ls 사용자 사전 (harper_ls.lua 가 이 경로를 가리킨다)
+harper-dict.txt
