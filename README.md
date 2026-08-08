@@ -256,6 +256,21 @@ macism com.apple.keylayout.ABC
 macism 도, 권한도 문제가 아니다. 이게 켜져 있으면 **어떤 설정으로도 고칠 수 없다.**
 `:ImeDoctor` 가 실제로 전환을 시도해보고 되돌려지는지 검사해 알려준다.
 
+**현재 상태: 해제됨** (`defaults read com.kiding.inputmethod.sok` → `SuppressABC = 0`).
+해제 후 재측정 — ABC 전환이 유지된다:
+
+```
+  t+0ms → t+2000ms   com.apple.keylayout.ABC   ← 전 구간 유지 ✅
+```
+
+nvim 연동도 확인:
+
+| 시나리오 | 결과 |
+|---|---|
+| `InsertLeave` | `com.apple.keylayout.ABC` ✅ |
+| `InsertEnter` | `com.kiding.inputmethod.sok.mode` ✅ |
+| `i<Esc>` 10회 버스트 | 마지막 이벤트와 일치, 순서 역전 없음 ✅ |
+
 #### 동작
 
 `InsertLeave` → 영문 강제 / `InsertEnter` → 직전 한글 입력기 복원.
