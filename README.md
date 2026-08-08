@@ -172,13 +172,14 @@ snacks 는 모듈 모음이지만 `image` 와 `zen` 만 켰다 (setup 에 안 �
 
 #### zen 모듈 — 집중 글쓰기
 
-`<leader>z` 토글. zen-mode.nvim 을 쓰다가 이쪽으로 옮겼다(플러그인 1개 감소 + `dim` 획득).
+`<leader>z` 토글. zen-mode.nvim 을 쓰다가 이쪽으로 옮겼다(플러그인 1개 감소).
 
 | 설정 | 값 | 이유 |
 |---|---|---|
 | `width` | `0.6` (비율) | **고정폭(88)이면 터미널이 좁을 때 화면을 꽉 채워 여백이 사라진다.** 비율이면 어떤 폭에서도 좌우 여백이 남는다 |
 | `border` | `hpad` | snacks.win 내장 패딩 보더 — 본문과 창 가장자리 사이 1칸 |
-| `toggles.dim` | on | 커서가 있는 문단만 밝게, 나머지는 흐리게 |
+| `backdrop.transparent` | **`false`** | `true` 면 backdrop 이 `winblend` 로 비치는 창이 돼 **뒤의 원문이 그대로 보인다.** `false` 면 배경색을 미리 섞어 계산하고 `winblend=0` → 완전히 가림 |
+| `toggles.dim` | **off** | `dim` 은 treesitter 스코프 단위로 흐리게 하는 기능이라 산문에선 문단이 엉뚱하게 잡혀 산만하다 |
 
 > 플로팅 창 방식은 안쪽 패딩이 최대 1칸이다. 더 넉넉한 좌우 여백을 원하면
 > `no-neck-pain.nvim`(빈 사이드 버퍼로 진짜 패딩을 만드는 전용 플러그인)이 대안.

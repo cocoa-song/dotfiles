@@ -130,7 +130,9 @@ require("snacks").setup({
   -- ------------------------------------------------------ 집중 글쓰기
   -- zen-mode.nvim 대신 snacks 의 zen 모듈. 플러그인이 하나 줄고 dim 이 딸려온다.
   zen = {
-    toggles = { dim = true }, -- 커서가 있는 문단만 밝게, 나머지는 흐리게
+    -- dim 은 treesitter 스코프 단위로 흐리게 하는 기능이라
+    -- 산문(마크다운)에선 문단 구분이 엉뚱하게 잡혀 오히려 산만하다. 끈다.
+    toggles = { dim = false },
     show = { statusline = false, tabline = false },
     win = {
       -- ★ 고정폭(88)을 쓰면 터미널이 좁을 때 화면을 꽉 채워 여백이 사라진다.
@@ -138,7 +140,10 @@ require("snacks").setup({
       width = 0.6,
       height = 0,
       border = "hpad", -- 본문과 창 가장자리 사이 1칸 (snacks.win 내장 패딩 보더)
-      backdrop = { transparent = true, blend = 30 },
+      -- ★ transparent = true 로 두면 backdrop 이 winblend 로 "비치는 창"이 돼서
+      --   집중 모드 뒤에 원래 버퍼 텍스트가 그대로 보인다.
+      --   false 면 배경색을 미리 섞어 계산하고 winblend=0 → 완전히 가린다.
+      backdrop = { transparent = false, blend = 40 },
       wo = {
         number = false,
         relativenumber = false,
