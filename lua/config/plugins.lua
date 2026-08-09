@@ -18,8 +18,8 @@ vim.pack.add({
   -- ★ 마크다운 인라인 렌더링 — 이 설정의 핵심
   { src = gh("MeanderingProgrammer/render-markdown.nvim") },
 
-  -- 인라인 이미지 + 집중 글쓰기 (snacks 의 image · zen 모듈만 켠다)
-  { src = gh("folke/snacks.nvim") },
+  -- 집중 글쓰기
+  { src = gh("folke/zen-mode.nvim") },
 
   -- 자동완성 (v1 계열 고정 — v2 는 파괴적 변경 진행 중)
   { src = gh("saghen/blink.cmp"), version = vim.version.range("1.*") },
@@ -94,66 +94,6 @@ require("render-markdown").setup({
   quote = { icon = "▍" },
   pipe_table = { preset = "round" },
   link = { wiki = { icon = "󰌷 ", highlight = "RenderMarkdownWikiLink" } },
-})
-
--- ------------------------------------------------------- 인라인 이미지
--- snacks.nvim 은 모듈 모음이다. image 하나만 켜고 나머지는 전부 끈다.
--- (setup 에 안 적은 모듈은 기본적으로 비활성이라 별도 조치 불필요)
---
--- 요구사항
---   · 터미널이 Kitty 그래픽 프로토콜 지원 — Ghostty ✅ (kitty·wezterm 도 가능)
---   · ImageMagick — PNG 외 형식 변환용. 이 볼트는 jpg 2321 / webp 19 / gif 9 라 필수
-require("snacks").setup({
-  image = {
-    enabled = true,
-    doc = {
-      enabled = true, -- 마크다운 문서 안 이미지 표시
-      inline = true, -- 텍스트 흐름 안에 바로 렌더 (false 면 별도 창)
-      float = true, -- 인라인이 불가능한 상황에선 떠있는 창으로
-      max_width = 60,
-      max_height = 20,
-    },
-    -- ![[해시.png]] 형태의 Obsidian 임베드도 인식하도록
-    -- 첨부 폴더를 검색 경로에 넣는다
-    resolve = function(path, src)
-      -- src 가 확장자만 있는 위키 임베드면 볼트 attachments 에서 찾는다
-      if src:match("^[^/]+%.%w+$") then
-        local vault = vim.env.HOME .. "/Library/Mobile Documents/iCloud~md~obsidian/Documents"
-        local candidate = vault .. "/attachments/" .. src
-        if vim.uv.fs_stat(candidate) then
-          return candidate
-        end
-      end
-    end,
-  },
-
-  -- ------------------------------------------------------ 집중 글쓰기
-  -- zen-mode.nvim 대신 snacks 의 zen 모듈. 플러그인이 하나 줄고 dim 이 딸려온다.
-  zen = {
-    -- dim 은 treesitter 스코프 단위로 흐리게 하는 기능이라
-    -- 산문(마크다운)에선 문단 구분이 엉뚱하게 잡혀 오히려 산만하다. 끈다.
-    toggles = { dim = false },
-    show = { statusline = false, tabline = false },
-    win = {
-      -- ★ 고정폭(88)을 쓰면 터미널이 좁을 때 화면을 꽉 채워 여백이 사라진다.
-      --   비율로 주면 어떤 폭에서도 좌우 여백이 남는다.
-      width = 0.6,
-      height = 0,
-      border = "hpad", -- 본문과 창 가장자리 사이 1칸 (snacks.win 내장 패딩 보더)
-      -- ★ transparent = true 로 두면 backdrop 이 winblend 로 "비치는 창"이 돼서
-      --   집중 모드 뒤에 원래 버퍼 텍스트가 그대로 보인다.
-      --   false 면 배경색을 미리 섞어 계산하고 winblend=0 → 완전히 가린다.
-      backdrop = { transparent = false, blend = 40 },
-      wo = {
-        number = false,
-        relativenumber = false,
-        cursorline = false,
-        signcolumn = "no",
-        foldcolumn = "0",
-        list = false,
-      },
-    },
-  },
 })
 
 -- ------------------------------------------------------------ 자동완성
@@ -240,5 +180,21 @@ telescope.setup({
   pickers = {
     find_files = { find_command = { "fd", "--type", "f", "--strip-cwd-prefix" } },
     buffers = { sort_lastused = true, ignore_current_buffer = true },
+  },
+})
+
+-- ------------------------------------------------------- 집중 글쓰기
+require("zen-mode").setup({
+  window = {
+    width = 88, -- 한 줄에 들어갈 글자 수. 한글 기준 44자 남짓
+    options = {
+      number = false,
+      relativenumber = true,
+      cursorline = false,
+      signcolumn = "no",
+    },
+  },
+  plugins = {
+    options = { laststatus = 0 },
   },
 })

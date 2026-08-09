@@ -4,7 +4,7 @@
 2026-08-08 기준으로 생태계를 재평가해 처음부터 다시 구성.
 
 - **Neovim**: 0.12.4 (Homebrew)
-- **플러그인**: 11개 (약 40MB) — 내장 `vim.pack` 으로 관리
+- **플러그인**: 11개 (약 28MB) — 내장 `vim.pack` 으로 관리
 - **시작 시간**: 약 80ms (지연 로딩 없이 전부 즉시 로드)
 
 ```
@@ -18,7 +18,8 @@
 │   └── ime.lua                 한영 자동전환 (macOS)
 ├── lsp/                        서버별 설정 — vim.lsp.enable 이 자동 로드
 │   ├── lua_ls.lua
-│   ├── marksman.lua
+│   ├── markdown_oxide.lua      노트(PKM)
+│   ├── marksman.lua            (비활성 — markdown_oxide 로 대체)
 │   └── harper_ls.lua           (비활성)
 ├── after/ftplugin/markdown.lua 마크다운 = 산문 설정
 └── nvim-pack-lock.json         vim.pack 자동 생성 (git 커밋 권장)
@@ -156,33 +157,11 @@ LSP 서버·포매터 **바이너리 설치기**. 설정은 하지 않는다 —
 - 색 테마는 `tokyonight-day`(밝음). 어두운 쪽은 `plugins.lua` 에서 `-night` / `-storm`
 - lualine 은 마크다운 버퍼에서 **단어 수**를 표시한다 (한글 포함)
 
-### snacks.nvim (image · zen 모듈만)
+### zen-mode.nvim
 
-folke · [repo](https://github.com/folke/snacks.nvim)
+`392K` · folke · [repo](https://github.com/folke/zen-mode.nvim)
 
-터미널 안에서 마크다운의 이미지를 **실제로 보여준다.** Kitty 그래픽 프로토콜 사용.
-
-snacks 는 모듈 모음이지만 `image` 와 `zen` 만 켰다 (setup 에 안 적은 모듈은 비활성).
-
-- 터미널: **Ghostty** ✅ (kitty · wezterm 도 지원)
-- `magick` (ImageMagick) 필요 — PNG 외 형식 변환용.
-  이 볼트는 jpg 2321 / png 1958 / webp 19 / gif 9 라 필수다
-- `resolve` 콜백으로 Obsidian 임베드 `![[해시.png]]` 를 볼트 `attachments/` 에서 찾도록 했다
-  (기본 동작은 문서 기준 상대경로만 본다)
-
-#### zen 모듈 — 집중 글쓰기
-
-`<leader>z` 토글. zen-mode.nvim 을 쓰다가 이쪽으로 옮겼다(플러그인 1개 감소).
-
-| 설정 | 값 | 이유 |
-|---|---|---|
-| `width` | `0.6` (비율) | **고정폭(88)이면 터미널이 좁을 때 화면을 꽉 채워 여백이 사라진다.** 비율이면 어떤 폭에서도 좌우 여백이 남는다 |
-| `border` | `hpad` | snacks.win 내장 패딩 보더 — 본문과 창 가장자리 사이 1칸 |
-| `backdrop.transparent` | **`false`** | `true` 면 backdrop 이 `winblend` 로 비치는 창이 돼 **뒤의 원문이 그대로 보인다.** `false` 면 배경색을 미리 섞어 계산하고 `winblend=0` → 완전히 가림 |
-| `toggles.dim` | **off** | `dim` 은 treesitter 스코프 단위로 흐리게 하는 기능이라 산문에선 문단이 엉뚱하게 잡혀 산만하다 |
-
-> 플로팅 창 방식은 안쪽 패딩이 최대 1칸이다. 더 넉넉한 좌우 여백을 원하면
-> `no-neck-pain.nvim`(빈 사이드 버퍼로 진짜 패딩을 만드는 전용 플러그인)이 대안.
+`<leader>z` — 본문을 88칸 폭으로 화면 중앙에 놓고 UI 를 숨긴다. 긴 글 쓸 때.
 
 ---
 
@@ -192,12 +171,18 @@ snacks 는 모듈 모음이지만 `image` 와 `zen` 만 켰다 (setup 에 안 �
 
 | 도구 | 버전 | 역할 |
 |---|---|---|
-| **marksman** | 1.0.0 | 마크다운 LSP — 헤딩을 문서 심볼로(`gO` = 목차), `[[위키링크]]`/상대링크 완성, 링크 정의 이동(`gd`), 헤딩 rename 시 걸린 링크 동시 수정 |
+| **markdown-oxide** | 0.25.12 | 마크다운 PKM LSP — `[[위키링크]]` 완성, **백링크**, 데일리 노트, 태그, 헤딩/블록 참조, `gO` 목차. 5절 참고 |
 | **lua-language-server** | 3.15.0 | Lua LSP (lazydev 와 함께 동작) |
 | **stylua** | 2.5.2 | Lua 포매터 — 저장 시 자동 |
 | **prettier** | 3.9.6 | 마크다운 포매터 — `<leader>cf` 수동 |
 
 추가 설치: `:MasonInstall <이름>`
+
+### 비활성: marksman
+
+markdown-oxide 로 대체했다. 바이너리와 `lsp/marksman.lua` 는 남겨뒀으니
+`lua/config/lsp.lua` 의 `vim.lsp.enable` 에서 `"markdown_oxide"` 를 `"marksman"` 으로
+바꾸면 즉시 원복된다. **둘을 동시에 켜지 말 것** — 같은 버퍼에 붙어 링크 완성 후보가 중복된다.
 
 ### 비활성: harper-ls
 
@@ -220,7 +205,6 @@ Grammarly 대안, Automattic 관리)인데 **한국어를 지원하지 않아** 
 | `ripgrep` (rg) | ✅ 설치됨 | telescope 내용 검색 |
 | `fd` | ✅ 설치됨 | telescope 파일 찾기 |
 | `node` | ✅ v22.23.1 | prettier 실행 |
-| `magick` | ✅ 7.1.2 | snacks.image 형식 변환 (`brew install imagemagick`) |
 | `git` | ✅ | vim.pack 이 플러그인을 git 으로 관리 |
 | **`macism`** | ✅ 설치됨 | **한영 자동전환** ↓ |
 
@@ -235,73 +219,72 @@ brew trust laishulu/homebrew    # 서드파티 탭이라 신뢰 승인 필요
 brew install macism
 ```
 
-#### ⚠ 속 입력기(SokIM) 사용자는 이걸 먼저 꺼야 한다
+동작: `InsertLeave` 에 현재 입력기를 기억하고 ABC 로 전환 → `InsertEnter` 에 복원.
+전부 `vim.system` 비동기라 모드 전환이 느려지지 않는다.
 
-메뉴바 **속 입력기(한/A) 아이콘 → "ABC 입력기 제한" 체크 해제.**
-
-SokIM 의 `SuppressABC` 기능은 입력 소스가 ABC/US 가 되면 **~100ms 뒤 자기 자신을
-다시 선택**한다. 실측:
-
-```
-macism com.apple.keylayout.ABC
-  t+0ms     com.apple.keylayout.ABC          ← 전환 성공
-  t+150ms   com.kiding.inputmethod.sok.mode  ← SokIM 이 되돌림
-  t+1000ms  com.kiding.inputmethod.sok.mode
-
-대조군 (Apple 두벌식)
-  t+0ms     com.apple.inputmethod.Korean.2SetKorean
-  t+1000ms  com.apple.inputmethod.Korean.2SetKorean   ← 유지
-```
-
-macism 도, 권한도 문제가 아니다. 이게 켜져 있으면 **어떤 설정으로도 고칠 수 없다.**
-`:ImeDoctor` 가 실제로 전환을 시도해보고 되돌려지는지 검사해 알려준다.
-
-**현재 상태: 해제됨** (`defaults read com.kiding.inputmethod.sok` → `SuppressABC = 0`).
-해제 후 재측정 — ABC 전환이 유지된다:
-
-```
-  t+0ms → t+2000ms   com.apple.keylayout.ABC   ← 전 구간 유지 ✅
-```
-
-nvim 연동도 확인:
-
-| 시나리오 | 결과 |
-|---|---|
-| `InsertLeave` | `com.apple.keylayout.ABC` ✅ |
-| `InsertEnter` | `com.kiding.inputmethod.sok.mode` ✅ |
-| `i<Esc>` 10회 버스트 | 마지막 이벤트와 일치, 순서 역전 없음 ✅ |
-
-#### 동작
-
-`InsertLeave` → 영문 강제 / `InsertEnter` → 직전 한글 입력기 복원.
-한글 입력기 ID 는 하드코딩하지 않고 런타임에 감지한다
-(이 환경은 속 입력기 `com.kiding.inputmethod.sok.mode`).
-
-**단일 슬롯 큐**로 명령을 합친다. 예전 구현은 `InsertLeave` 가
-"현재 입력기 읽기 → 그 결과로 전환" 2단 비동기라 빠른 `i<Esc>` 반복에서
-콜백 순서가 뒤집혔다(실측: InsertEnter 복원이 5.9ms, 뒤늦은 영문 전환이 48.7ms).
-지금은 마지막으로 원하는 상태 하나만 남겨 적용하므로 역전이 구조적으로 불가능하고,
-핫 패스에서 조회를 없애 `InsertLeave` 당 프로세스가 2개 → 1개다.
+한글 입력기 ID 는 **하드코딩하지 않고 런타임에 감지**한다.
+(이 환경은 속 입력기 `com.kiding.inputmethod.sok.mode` — Apple 두벌식이 아니다)
 
 | 명령 | 동작 |
 |---|---|
-| `:ImeDoctor` | 실제 전환 테스트 — SuppressABC 켜져 있으면 잡아낸다 |
+| `:ImeDoctor` | 현재 입력기 · 복원 대상 · 권한 안내 |
 | `:ImeRestoreToggle` | Insert 진입 시 한글 복원 끄기/켜기 |
-| `:ImeSync` | 지금 쓰는 한글 입력기를 복원 대상으로 재감지 |
 
-#### 남은 한계
-
-macism 은 SokIM 을 `TISIntendedLanguage=en` 때문에 **비-CJK 로 오분류**해서
-복원 시 우회(임시 창으로 포커스를 뺏었다 돌려주기)를 건너뛴다. 그 결과
-macOS TIS 버그(메뉴바 아이콘만 바뀌고 실제 입력은 직전 입력기)에 노출될 수 있다.
-인서트 모드인데 영문이 나오면 `:ImeRestoreToggle` 로 복원을 끄고
-한글은 손으로 켜는 단방향 운용을 권한다.
-
-
+전환이 안 되면 **시스템 설정 → 개인정보 보호 및 보안 → 손쉬운 사용**에서 터미널 앱에 권한을 준다.
 
 ---
 
-## 5. 마크다운 편집 설정
+## 5. 노트 (PKM)
+
+노트 기능은 **플러그인이 아니라 LSP**(markdown-oxide)로 들어온다.
+그래서 이 설정 어디에도 특정 노트 폴더 경로가 박혀 있지 않다.
+
+### 루트 표시 파일로 저장소를 찾는다
+
+markdown-oxide 는 버퍼가 있는 위치에서 위로 올라가며 `.moxide.toml` → `.obsidian` →
+`.git` 을 찾아 그걸 노트 저장소 루트로 삼는다. 덕분에 **여러 저장소가 동시에 각각 동작**한다.
+
+| 저장소 | 루트 표시 | 성격 |
+|---|---|---|
+| `~/notes` | `.moxide.toml` | 직접 쓰는 노트. git 으로 버전 관리 |
+| iCloud Obsidian 볼트 | `.obsidian` | oracle 캡처 아카이브 (읽기·검색용) |
+
+새 저장소를 만들려면 그 폴더에 빈 `.moxide.toml` 을 두면 끝이다. nvim 설정은 안 건드린다.
+
+```
+~/notes/
+  .moxide.toml     daily_notes_folder = "daily"  ·  dailynote = "%Y-%m-%d"
+  inbox/           정리 전 빠른 캡처
+  daily/           데일리 노트
+```
+
+### 키맵
+
+| 키 | 동작 |
+|---|---|
+| `<leader>nn` | 새 노트 (이름 입력 → `~/notes/<이름>.md`) |
+| `<leader>nf` / `<leader>ng` | 노트 파일 찾기 / 내용 검색 |
+| `<leader>nt` / `<leader>ny` | 오늘 / 어제 데일리 노트 |
+| `[[` 입력 | 노트 제목 완성 (blink.cmp) |
+| `gd` | 링크 따라가기 |
+| **`grr`** | **백링크** — 이 노트를 참조하는 노트 목록 |
+| `gO` | 헤딩 목차 |
+
+`<leader>nt` / `<leader>ny` 는 서버가 **버퍼에 등록**하는 `:LspToday` / `:LspYesterday` 라
+마크다운 버퍼에서만 동작한다. 아무 데서나 쓰려면 노트를 먼저 연다.
+
+> **백링크 주의**: `grr` 은 커서가 **본문**에 있을 때 "이 파일로 향하는 링크"를 찾는다.
+> 제목 헤딩(`# 제목`) 줄에서는 "그 헤딩에 대한 참조"를 찾기 때문에 결과가 다르다.
+
+### 알아둘 것
+
+- 위키링크는 한글 파일명에서도 정상 동작한다 (검증함)
+- `unresolved_diagnostics` 를 켜뒀지만 깨진 `[[링크]]` 진단은 확인하지 못했다.
+  기대하지 말 것 — 필요하면 `.moxide.toml` 을 조정하거나 상류에 확인이 필요하다
+
+---
+
+## 6. 마크다운 편집 설정
 
 `after/ftplugin/markdown.lua`. `after/` 인 이유는 Neovim 런타임의 `ftplugin/markdown.vim` 이
 `shiftwidth=4` 를 setlocal 하기 때문 — `~/.config/nvim/ftplugin/` 은 그보다 먼저 로드돼 덮어써진다.
@@ -322,11 +305,11 @@ macOS TIS 버그(메뉴바 아이콘만 바뀌고 실제 입력은 직전 입력
 | `]]` `[[` | 다음 · 이전 헤딩 |
 | `<leader>ts` | 맞춤법 검사 토글 (영문) |
 | `<leader>tr` | 마크다운 렌더 토글 |
-| `gO` | 문서 심볼 = 목차 (marksman) |
+| `gO` | 문서 심볼 = 목차 (markdown-oxide) |
 
 ---
 
-## 6. 운영
+## 7. 운영
 
 ```lua
 :lua vim.pack.update()                      -- 전체 업데이트 (<leader>pu)

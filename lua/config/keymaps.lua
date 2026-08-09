@@ -25,10 +25,13 @@ map("n", "<leader>fd", t.diagnostics, { desc = "진단 목록" })
 -- 현재 파일 안에서 찾기 (긴 노트에서 유용)
 map("n", "<leader>/", t.current_buffer_fuzzy_find, { desc = "이 문서 안에서 찾기" })
 
--- --------------------------------------------------------- 노트 폴더
--- obsidian.nvim 없이, 노트 디렉터리로 바로 가는 텔레스코프 단축키만.
--- (필요 없으면 이 블록만 지우면 된다)
-local NOTES = vim.env.HOME .. "/Library/Mobile Documents/iCloud~md~obsidian/Documents"
+-- ------------------------------------------------------------- 노트
+-- [[링크]] 완성 · 백링크 · 데일리 노트는 markdown_oxide LSP 가 제공한다.
+-- 여기 있는 건 "노트 폴더로 가는 길" 뿐이다.
+--
+-- 노트 루트는 .moxide.toml 로 표시돼 있어 LSP 는 경로를 몰라도 되지만,
+-- 텔레스코프는 시작 지점이 필요해서 이 상수 하나만 둔다.
+local NOTES = vim.env.HOME .. "/notes"
 
 map("n", "<leader>nf", function()
   t.find_files({ cwd = NOTES, prompt_title = "노트 파일" })
@@ -38,10 +41,24 @@ map("n", "<leader>ng", function()
   t.live_grep({ cwd = NOTES, prompt_title = "노트 검색" })
 end, { desc = "노트 내용 검색" })
 
+-- 새 노트: 이름만 받고 연다. 첫 저장 전까지 파일은 만들어지지 않는다.
+map("n", "<leader>nn", function()
+  vim.ui.input({ prompt = "새 노트: " }, function(name)
+    if not name or vim.trim(name) == "" then
+      return
+    end
+    name = vim.trim(name):gsub("[/:]", "-")
+    vim.cmd.edit(vim.fn.fnameescape(NOTES .. "/" .. name .. ".md"))
+  end)
+end, { desc = "새 노트" })
+
+-- 데일리 노트 — markdown_oxide 가 버퍼에 등록하는 명령이라
+-- 마크다운 버퍼에서만 동작한다. 아무 데서나 쓰려면 노트를 먼저 연다.
+map("n", "<leader>nt", "<cmd>LspToday<CR>", { desc = "오늘 노트" })
+map("n", "<leader>ny", "<cmd>LspYesterday<CR>", { desc = "어제 노트" })
+
 -- --------------------------------------------------------- 글쓰기
-map("n", "<leader>z", function()
-  Snacks.zen()
-end, { desc = "집중 모드" })
+map("n", "<leader>z", "<cmd>ZenMode<CR>", { desc = "집중 모드" })
 map("n", "<leader>cf", function()
   require("conform").format({ async = true, lsp_format = "fallback" })
 end, { desc = "포맷" })
