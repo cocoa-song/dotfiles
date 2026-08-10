@@ -10,8 +10,8 @@ local gh = function(repo)
 end
 
 vim.pack.add({
-  -- 외형
-  { src = gh("folke/tokyonight.nvim") },
+  -- 외형 — Ghostty 의 `theme = Flexoki Light` 와 같은 팔레트를 쓴다
+  { src = gh("kepano/flexoki-neovim"), name = "flexoki" },
   { src = gh("nvim-lualine/lualine.nvim") },
   { src = gh("nvim-tree/nvim-web-devicons") },
 
@@ -35,17 +35,17 @@ vim.pack.add({
 })
 
 -- ---------------------------------------------------------------- 외형
-require("tokyonight").setup({
-  style = "night",
-  styles = { comments = { italic = true } },
-})
-vim.cmd.colorscheme("tokyonight-day") -- 밝은 배경 선호 시 -day, 어두운 쪽은 -night / -storm
+-- 터미널(Ghostty)과 같은 테마를 쓴다. ~/.config/ghostty/config 의
+-- `theme = Flexoki Light` 와 팔레트가 동일해서 배경·전경이 이어진다.
+-- 어두운 쪽으로 갈 땐 Ghostty 를 "Flexoki Dark" 로 바꾸고 여기를 flexoki-moon 으로.
+vim.o.background = "light"
+vim.cmd.colorscheme("flexoki-light")
 
 require("nvim-web-devicons").setup({})
 
 require("lualine").setup({
   options = {
-    theme = "tokyonight",
+    theme = "auto",
     section_separators = "",
     component_separators = "|",
   },

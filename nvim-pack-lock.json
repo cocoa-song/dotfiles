@@ -4,6 +4,10 @@
       "rev": "619363c30309d29ffa631e67c8183f2a72caa373",
       "src": "https://github.com/stevearc/conform.nvim"
     },
+    "flexoki": {
+      "rev": "c3e2251e813d29d885a7cbbe9808a7af234d845d",
+      "src": "https://github.com/kepano/flexoki-neovim"
+    },
     "fzf-lua": {
       "rev": "8671012a7b2a1648595952c655039d51fb301c14",
       "src": "https://github.com/ibhagwan/fzf-lua"
@@ -27,10 +31,6 @@
     "render-markdown.nvim": {
       "rev": "f422cb5c6855f150e2ddcfaf44e7157b98b34f6a",
       "src": "https://github.com/MeanderingProgrammer/render-markdown.nvim"
-    },
-    "tokyonight.nvim": {
-      "rev": "cdc07ac78467a233fd62c493de29a17e0cf2b2b6",
-      "src": "https://github.com/folke/tokyonight.nvim"
     },
     "zen-mode.nvim": {
       "rev": "8564ce6d29ec7554eb9df578efa882d33b3c23a7",

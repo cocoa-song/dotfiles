@@ -189,12 +189,20 @@ ibhagwan · [repo](https://github.com/ibhagwan/fzf-lua)
 창 안에서: `<C-j>`/`<C-k>` 이동 · `<C-u>`/`<C-d>` 미리보기 스크롤 ·
 `<C-q>` 전체를 quickfix 로 · `<C-x>`/`<C-v>`/`<C-t>` 분할·탭으로 열기
 
-### tokyonight.nvim / lualine.nvim / nvim-web-devicons
+### flexoki (kepano) / lualine.nvim / nvim-web-devicons
 
-`3.7M` / `1.8M` / `932K` · 외형.
+외형. **터미널과 같은 테마를 쓴다** — `~/.config/ghostty/config` 의
+`theme = Flexoki Light` 와 팔레트가 같아서 배경이 이어진다.
 
-- 색 테마는 `tokyonight-day`(밝음). 어두운 쪽은 `plugins.lua` 에서 `-night` / `-storm`
-- lualine 은 마크다운 버퍼에서 **단어 수**를 표시한다 (한글 포함)
+| | Ghostty | nvim |
+|---|---|---|
+| 배경 | `#fffcf0` | `#fffcf0` ✅ |
+| 전경 | `#100f0f` | `#100f0f` ✅ |
+
+어두운 쪽으로 갈 땐 **양쪽을 같이** 바꾼다 — Ghostty 를 `Flexoki Dark` 로,
+`plugins.lua` 를 `flexoki-moon` + `background = "dark"` 로.
+
+lualine 은 마크다운 버퍼에서 **단어 수**를 표시한다 (한글 포함).
 
 ### zen-mode.nvim
 
@@ -315,7 +323,7 @@ markdown-oxide 는 버퍼가 있는 위치에서 위로 올라가며 `.moxide.to
 | `<leader>nn` | 새 노트 (이름 입력 → `~/notes/<이름>.md`) |
 | `<leader>nf` / `<leader>ng` | 노트 파일 찾기 / 내용 검색 |
 | `<leader>nt` / `<leader>ny` | 오늘 / 어제 데일리 노트 |
-| `[[` 입력 | 노트 제목 완성 (blink.cmp) |
+| `[[` 입력 | 노트 제목 완성 (내장 자동완성) |
 | `gd` | 링크 따라가기 |
 | **`grr`** | **백링크** — 이 노트를 참조하는 노트 목록 |
 | `gO` | 헤딩 목차 |
@@ -365,7 +373,7 @@ markdown-oxide 는 버퍼가 있는 위치에서 위로 올라가며 `.moxide.to
 :lua vim.pack.update()                      -- 전체 업데이트 (<leader>pu)
                                             --   변경 검토 후 :w 확정 / :q 취소
 :lua vim.pack.update(nil, {offline = true}) -- 설치 목록·상태만 (<leader>ps)
-:lua vim.pack.update({ "blink.cmp" })       -- 개별
+:lua vim.pack.update({ "fzf-lua" })         -- 개별
 :lua vim.pack.del({ "이름" })               -- 제거
 ```
 
