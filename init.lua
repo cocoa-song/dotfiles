@@ -12,7 +12,7 @@
 --   ftplugin/*     파일타입별 설정
 
 if vim.fn.has("nvim-0.12") == 0 then
-  vim.notify("이 설정은 Neovim 0.12+ 가 필요합니다 (현재: " .. tostring(vim.version()) .. ")", vim.log.levels.ERROR)
+  vim.notify("This config requires Neovim 0.12+ (current: " .. tostring(vim.version()) .. ")", vim.log.levels.ERROR)
   return
 end
 

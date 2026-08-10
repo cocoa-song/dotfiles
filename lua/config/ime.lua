@@ -87,7 +87,7 @@ vim.api.nvim_create_user_command("ImeDoctor", function()
   if bin == "" then
     vim.notify(
       table.concat({
-        "macism 없음 → 한영 자동전환 꺼짐",
+        "macism not found — IME auto-switching is off",
         "",
         "  brew tap laishulu/homebrew",
         "  brew trust laishulu/homebrew",
@@ -109,17 +109,17 @@ vim.api.nvim_create_user_command("ImeDoctor", function()
             vim.schedule(function()
               vim.notify(
                 table.concat({
-                  "macism   : " .. bin,
-                  "시작 상태: " .. before,
-                  "영문 전환 800ms 후: " .. after,
-                  "복원 대상: " .. (M.korean or "(미감지)"),
+                  "macism      : " .. bin,
+                  "before      : " .. before,
+                  "after 800ms : " .. after,
+                  "restore to  : " .. (M.korean or "(not detected yet)"),
                   "",
                   reverted
-                      and ("⛔ 영문 전환이 되돌려졌습니다 — 입력기가 되돌리고 있습니다.\n"
-                        .. "쓰는 입력기의 'ABC 입력기 제한' 류 옵션을 끄세요.\n"
-                        .. '(속 입력기라면 메뉴바 한/A → "ABC 입력기 제한" 해제)\n'
-                        .. "그 옵션이 켜져 있으면 nvim 설정으로는 고칠 수 없습니다.")
-                    or "✅ 영문 전환이 유지됩니다.",
+                      and ("⛔ The switch to ABC was reverted — your IME is undoing it.\n"
+                        .. "Turn off its 'restrict ABC input source' style option.\n"
+                        .. '(SokIM: menu bar 한/A → uncheck "ABC 입력기 제한")\n'
+                        .. "While that option is on, no nvim config can fix this.")
+                    or "✅ The switch to ABC holds.",
                 }, "\n"),
                 reverted and vim.log.levels.ERROR or vim.log.levels.INFO
               )
@@ -133,12 +133,12 @@ end, { desc = "한영 자동전환 상태 점검 (실제 전환 테스트)" })
 
 vim.api.nvim_create_user_command("ImeRestoreToggle", function()
   M.restore = not M.restore
-  vim.notify("Insert 진입 시 한글 복원: " .. (M.restore and "켬" or "끔"))
+  vim.notify("Restore Korean IME on insert: " .. (M.restore and "on" or "off"))
 end, { desc = "Insert 진입 시 한글 복원 토글" })
 
 vim.api.nvim_create_user_command("ImeSync", function()
   learn(function()
-    vim.notify("복원 대상: " .. (M.korean or "(미감지)"))
+    vim.notify("Restore target: " .. (M.korean or "(not detected)"))
   end)
 end, { desc = "지금 쓰는 한글 입력기를 복원 대상으로 재감지" })
 

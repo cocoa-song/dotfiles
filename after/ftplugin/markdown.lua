@@ -79,7 +79,7 @@ end
 -- 맞춤법 토글 (영문 문서 쓸 때)
 map("n", "<leader>ts", function()
   vim.opt_local.spell = not vim.opt_local.spell:get()
-  vim.notify("맞춤법 검사: " .. (vim.opt_local.spell:get() and "켬" or "끔"))
+  vim.notify("Spell check: " .. (vim.opt_local.spell:get() and "on" or "off"))
 end, "맞춤법 토글")
 
 -- 렌더링 토글 (원문 마크업을 그대로 보고 싶을 때)

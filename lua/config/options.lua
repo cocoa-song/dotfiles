@@ -73,8 +73,11 @@ vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter", "CursorHold", "TermClos
 -- 버퍼를 손대지 않았는데 밖에서 바뀌면 조용히 갈아끼우지 말고 알려준다
 vim.api.nvim_create_autocmd("FileChangedShellPost", {
   group = vim.api.nvim_create_augroup("file_changed_notify", { clear = true }),
-  callback = function()
-    vim.notify("파일이 밖에서 바뀌어 다시 읽었습니다", vim.log.levels.WARN)
+  callback = function(ev)
+    vim.notify(
+      ("Reloaded: %s (changed on disk)"):format(vim.fn.fnamemodify(ev.file, ":t")),
+      vim.log.levels.WARN
+    )
   end,
 })
 
