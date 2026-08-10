@@ -24,9 +24,12 @@ end
 return {
   cmd = { "markdown-oxide" },
   filetypes = { "markdown" },
-  -- .moxide.toml 을 먼저 본다 — 노트 저장소를 명시적으로 표시한 것이므로
-  -- 상위의 .git 보다 우선해야 한다
-  root_markers = { ".moxide.toml", ".obsidian", ".git" },
+  -- ★ `.git` 을 일부러 뺐다.
+  -- notes/ 가 ~/workspace 저장소 안에 있어서 `.git` 을 두면 워크스페이스 전체
+  -- 마크다운 716개(production 681 · toolbox 30)가 인덱싱되고, 백링크와
+  -- [[링크]] 완성 후보에 프로젝트 문서가 전부 섞여 들어온다.
+  -- 노트 저장소를 명시한 곳에서만 서버를 띄운다.
+  root_markers = { ".moxide.toml", ".obsidian" },
 
   on_attach = function(client, bufnr)
     -- :LspToday / :LspTomorrow / :LspYesterday

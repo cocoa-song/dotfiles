@@ -33,7 +33,7 @@ map("n", "<leader>/", t.blines, { desc = "이 문서 안에서 찾기" })
 --
 -- 노트 루트는 .moxide.toml 로 표시돼 있어 LSP 는 경로를 몰라도 되지만,
 -- 검색은 시작 지점이 필요해서 이 상수 하나만 둔다.
-local NOTES = vim.env.HOME .. "/notes"
+local NOTES = vim.env.HOME .. "/workspace/notes"
 
 map("n", "<leader>nf", function()
   t.files({ cwd = NOTES, winopts = { title = " 노트 파일 " } })

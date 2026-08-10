@@ -199,8 +199,8 @@ brew install lua-language-server markdown-oxide stylua prettier marksman
 `lsp/*.lua` 의 `cmd` 는 전부 이름만 쓴다(`{ "markdown-oxide" }`) — PATH 로 해결되므로
 설치 경로가 바뀌어도 설정을 고칠 필요가 없다.
 
-> 옛 `~/.local/share/nvim/mason/`(86MB)은 이제 PATH 에 주입되지 않아 무해하지만
-> 죽은 용량이다. 지우려면 `rm -rf ~/.local/share/nvim/mason`.
+> 옛 `~/.local/share/nvim/mason/`(86MB)과 lazy.nvim 시절 `lazy/`(57MB)는 정리했다.
+> nvim 데이터 디렉터리는 이제 플러그인 14MB 뿐이다.
 
 ### 비활성: marksman
 
@@ -276,18 +276,24 @@ ABC 전환을 스스로 되돌린다** — 속 입력기의 "ABC 입력기 제�
 
 ### 루트 표시 파일로 저장소를 찾는다
 
-markdown-oxide 는 버퍼가 있는 위치에서 위로 올라가며 `.moxide.toml` → `.obsidian` →
-`.git` 을 찾아 그걸 노트 저장소 루트로 삼는다. 덕분에 **여러 저장소가 동시에 각각 동작**한다.
+markdown-oxide 는 버퍼가 있는 위치에서 위로 올라가며 `.moxide.toml` 또는 `.obsidian`
+을 찾아 그걸 노트 저장소 루트로 삼는다. 덕분에 **여러 저장소가 동시에 각각 동작**한다.
 
 | 저장소 | 루트 표시 | 성격 |
 |---|---|---|
-| `~/notes` | `.moxide.toml` | 직접 쓰는 노트. git 으로 버전 관리 |
+| `~/workspace/notes` | `.moxide.toml` | 직접 쓰는 노트. workspace 저장소가 함께 관리 |
 | iCloud Obsidian 볼트 | `.obsidian` | oracle 캡처 아카이브 (읽기·검색용) |
+
+> **`.git` 은 루트 표시에서 일부러 뺐다.** notes/ 가 `~/workspace` 저장소 안에 있어서
+> `.git` 을 두면 워크스페이스 전체 마크다운 716개(production 681 · toolbox 30)가
+> 인덱싱되고, 백링크와 `[[링크]]` 완성 후보에 프로젝트 문서가 전부 섞여 들어온다.
+> 지금은 노트 저장소를 명시한 곳에서만 서버가 뜬다 —
+> `~/workspace/CLAUDE.md` 를 열면 markdown-oxide 가 붙지 않는다(검증함).
 
 새 저장소를 만들려면 그 폴더에 빈 `.moxide.toml` 을 두면 끝이다. nvim 설정은 안 건드린다.
 
 ```
-~/notes/
+~/workspace/notes/
   .moxide.toml     daily_notes_folder = "daily"  ·  dailynote = "%Y-%m-%d"
   inbox/           정리 전 빠른 캡처
   daily/           데일리 노트
@@ -297,7 +303,7 @@ markdown-oxide 는 버퍼가 있는 위치에서 위로 올라가며 `.moxide.to
 
 | 키 | 동작 |
 |---|---|
-| `<leader>nn` | 새 노트 (이름 입력 → `~/notes/<이름>.md`) |
+| `<leader>nn` | 새 노트 (이름 입력 → `~/workspace/notes/<이름>.md`) |
 | `<leader>nf` / `<leader>ng` | 노트 파일 찾기 / 내용 검색 |
 | `<leader>nt` / `<leader>ny` | 오늘 / 어제 데일리 노트 |
 | `[[` 입력 | 노트 제목 완성 (내장 자동완성) |
