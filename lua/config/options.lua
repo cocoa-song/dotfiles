@@ -47,6 +47,37 @@ vim.api.nvim_create_autocmd("FileType", {
   end,
 })
 
+-- 밖에서 바뀐 파일을 다시 읽어온다.
+--
+-- 'autoread' 는 "감지하면 다시 읽어라"는 정책일 뿐, **언제 확인할지**는 별개다.
+-- nvim 은 파일을 감시하지 않고 특정 시점에만 검사하는데 터미널에선 그 시점이
+-- 거의 오지 않는다. 그래서 Claude Code 나 다른 터미널이 파일을 고쳐도 화면은
+-- 옛 내용 그대로고, 그 상태로 저장하면 남의 변경을 덮어쓴다.
+--
+-- checktime 을 걸어 커서를 멈추거나(updatetime 250ms) 창에 포커스가 돌아올 때
+-- 디스크를 확인시킨다. git checkout·iCloud 동기화도 같이 커버된다.
+vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter", "CursorHold", "TermClose", "TermLeave" }, {
+  group = vim.api.nvim_create_augroup("auto_checktime", { clear = true }),
+  callback = function()
+    -- ★ :checktime 은 자동명령 실행 중이면 검사를 연기한다(버퍼를 중간에
+    --   갈아끼우지 않으려고). vim.schedule 로 자동명령 밖에서 돌려야 즉시 반영된다.
+    vim.schedule(function()
+      -- 명령행 편집 중이거나 특수 버퍼(터미널·quickfix)면 건너뛴다
+      if vim.fn.mode() ~= "c" and vim.bo.buftype == "" then
+        vim.cmd.checktime()
+      end
+    end)
+  end,
+})
+
+-- 버퍼를 손대지 않았는데 밖에서 바뀌면 조용히 갈아끼우지 말고 알려준다
+vim.api.nvim_create_autocmd("FileChangedShellPost", {
+  group = vim.api.nvim_create_augroup("file_changed_notify", { clear = true }),
+  callback = function()
+    vim.notify("파일이 밖에서 바뀌어 다시 읽었습니다", vim.log.levels.WARN)
+  end,
+})
+
 -- 복사한 영역 잠깐 하이라이트
 vim.api.nvim_create_autocmd("TextYankPost", {
   group = vim.api.nvim_create_augroup("yank_highlight", { clear = true }),

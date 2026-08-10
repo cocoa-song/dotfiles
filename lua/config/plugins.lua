@@ -26,6 +26,12 @@ vim.pack.add({
 
   -- 파일/내용 검색
   { src = gh("ibhagwan/fzf-lua") },
+
+  -- 텍스트 감싸기 — 마크다운에서 **굵게** · [링크]() 를 만드는 핵심 동작
+  { src = gh("kylechui/nvim-surround") },
+
+  -- git 여백 표시 · hunk 조작
+  { src = gh("lewis6991/gitsigns.nvim") },
 })
 
 -- ---------------------------------------------------------------- 외형
@@ -94,8 +100,12 @@ require("conform").setup({
     markdown = { "prettier" },
   },
   -- 저장 시 자동 포맷은 Lua 만. 마크다운은 <leader>cf 로 수동.
-  -- (prettier 가 표를 정렬할 때 한글 폭 계산이 어긋나 오히려 깨지는 경우가 있어
-  --  산문에 자동 적용은 위험하다)
+  --
+  -- prettier 의 한글 처리는 실측으로 확인했다 — 표는 글자 폭을 정확히 계산해
+  -- 정렬하고(:---: 지시자도 존중), proseWrap=preserve 라 문단을 재배치하지 않는다.
+  -- 다만 저장할 때마다 리스트 마커(`*`/`-`)·중첩 들여쓰기(4→2칸)·`1)`→`1.` 을
+  -- 정규화하므로, 남이 쓴 문서나 캡처된 노트를 열었다 저장만 해도 diff 가 생긴다.
+  -- 그게 싫어서 수동으로 둔다. 자동이 편하면 아래 filetype 조건을 지우면 된다.
   format_on_save = function(bufnr)
     if vim.bo[bufnr].filetype ~= "lua" then
       return nil
@@ -138,6 +148,66 @@ require("fzf-lua").setup({
   },
   -- 노트 검색에서 Obsidian 설정 폴더가 섞이지 않게
   file_ignore_patterns = { "%.obsidian/", "node_modules/", "/build/", "/dist/" },
+})
+
+-- --------------------------------------------------------- 감싸기
+-- ysiw** → **단어**  ·  cs*_ → 기호 교체  ·  ds* → 제거
+-- 비주얼 선택 후 S** 도 된다. 마크다운 산문에서 가장 자주 쓰는 동작.
+-- 마크다운 전용 대상(b 굵게 · i 기울임 · c 코드 · l 링크)은
+-- after/ftplugin/markdown.lua 에서 buffer_setup 으로 더한다.
+-- 전역에 넣으면 Lua 편집에서 b=() 같은 기본 대상을 덮어써 버린다.
+require("nvim-surround").setup({})
+
+-- ------------------------------------------------------------- git
+-- 여백에 변경 표시 + hunk 단위 조작. 커밋·로그는 fzf-lua 픽커와 셸이 담당한다
+-- (fugitive/neogit/lazygit 은 넣지 않는다 — 커밋 워크플로와 겹친다).
+require("gitsigns").setup({
+  signs = {
+    add = { text = "▎" },
+    change = { text = "▎" },
+    delete = { text = "▁" },
+    topdelete = { text = "▔" },
+    changedelete = { text = "▎" },
+    untracked = { text = "▎" },
+  },
+  -- 산문에선 문단을 통째로 고치면 온 줄이 표시돼 시끄럽다. 필요할 때만 켠다.
+  current_line_blame = false,
+  current_line_blame_opts = { delay = 300, virt_text_pos = "eol" },
+
+  on_attach = function(bufnr)
+    local gs = require("gitsigns")
+    local map = function(mode, l, r, desc)
+      vim.keymap.set(mode, l, r, { buffer = bufnr, desc = "git: " .. desc })
+    end
+
+    -- hunk 이동 — 진단(]d)과 짝이 맞게 ]c/[c
+    map("n", "]c", function()
+      if vim.wo.diff then
+        vim.cmd.normal({ "]c", bang = true })
+      else
+        gs.nav_hunk("next")
+      end
+    end, "다음 변경")
+    map("n", "[c", function()
+      if vim.wo.diff then
+        vim.cmd.normal({ "[c", bang = true })
+      else
+        gs.nav_hunk("prev")
+      end
+    end, "이전 변경")
+
+    map("n", "<leader>hp", gs.preview_hunk, "변경 미리보기")
+    map("n", "<leader>hs", gs.stage_hunk, "hunk stage/취소")
+    map("v", "<leader>hs", function()
+      gs.stage_hunk({ vim.fn.line("."), vim.fn.line("v") })
+    end, "선택 영역 stage")
+    map("n", "<leader>hr", gs.reset_hunk, "hunk 되돌리기")
+    map("n", "<leader>hd", gs.diffthis, "이 파일 diff")
+    map("n", "<leader>hb", function()
+      gs.blame_line({ full = true })
+    end, "이 줄 blame")
+    map("n", "<leader>ht", gs.toggle_current_line_blame, "줄 blame 상시표시 토글")
+  end,
 })
 
 -- ------------------------------------------------------- 집중 글쓰기

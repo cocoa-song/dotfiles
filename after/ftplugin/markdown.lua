@@ -44,6 +44,38 @@ map({ "n", "x" }, "$", "g$", "줄 끝(보이는 줄)")
 map("n", "]]", "/^#\\+ <CR>:nohlsearch<CR>", "다음 헤딩")
 map("n", "[[", "?^#\\+ <CR>:nohlsearch<CR>", "이전 헤딩")
 
+-- 감싸기 — 마크다운 버퍼에서만. `ysiw*` 를 두 번 쳐도 `**굵게**` 가 되지 않아서
+-- (두 번째가 이미 붙은 `*` 를 단어로 잡는다) 전용 대상을 만든다.
+--   ysiwb → **굵게**   ysiwi → *기울임*   ysiwc → `코드`   ysiwl → [링크]()
+--   비주얼 선택 후 Sb / Si / Sc / Sl 도 동일
+local ok, surround = pcall(require, "nvim-surround")
+if ok then
+  -- `%b` 는 서로 다른 두 문자에만 쓸 수 있어서(`%b()`) `**` 같은 같은-문자
+  -- 구분자에는 못 쓴다. 비탐욕 매칭(`.-`)으로 직접 쓴다.
+  local pair = function(l, r)
+    return {
+      add = { { l }, { r } },
+      find = vim.pesc(l) .. ".-" .. vim.pesc(r),
+      delete = "^(" .. vim.pesc(l) .. ")().-(" .. vim.pesc(r) .. ")()$",
+    }
+  end
+  surround.buffer_setup({
+    -- `b` 는 기본 별칭이 `()` 다. get_alias 는 값이 문자열일 때만 별칭으로 쓰므로
+    -- false 를 주면 별칭을 지나쳐 아래 surrounds["b"] 가 잡힌다.
+    aliases = { ["b"] = false },
+    surrounds = {
+      ["b"] = pair("**", "**"),
+      ["i"] = pair("*", "*"),
+      ["c"] = pair("`", "`"),
+      ["l"] = { -- [단어]() — 링크 주소는 직접 채운다
+        add = function()
+          return { { "[" }, { "]()" } }
+        end,
+      },
+    },
+  })
+end
+
 -- 맞춤법 토글 (영문 문서 쓸 때)
 map("n", "<leader>ts", function()
   vim.opt_local.spell = not vim.opt_local.spell:get()

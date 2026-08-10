@@ -4,7 +4,7 @@
 2026-08-08 기준으로 생태계를 재평가해 처음부터 다시 구성.
 
 - **Neovim**: 0.12.4 (Homebrew)
-- **플러그인**: 7개 (14MB) — 내장 `vim.pack` 으로 관리
+- **플러그인**: 9개 — 내장 `vim.pack` 으로 관리
 - **시작 시간**: 약 31ms (지연 로딩 없이 전부 즉시 로드)
 
 ```
@@ -62,6 +62,34 @@ markdown  markdown_inline  lua  vim  vimdoc  query  c
 `vim.lsp.enable("marksman")` 을 호출하면 Neovim 이 runtimepath 에서 `lsp/marksman.lua` 를
 찾아 읽는다. 그래서 서버 설정이 `lua/` 가 아니라 최상위 `lsp/` 에 있다.
 
+### 밖에서 바뀐 파일 다시 읽기
+
+`lua/config/options.lua`. **Claude Code·다른 터미널·git checkout 이 파일을 고쳐도
+nvim 화면은 옛 내용 그대로고, 그 상태로 저장하면 남의 변경을 덮어쓴다.**
+
+`'autoread'` 는 켜져 있어도 부족하다 — 그건 "감지하면 다시 읽어라"는 정책일 뿐,
+**언제 확인할지**는 별개다. nvim 은 파일을 감시하지 않고 특정 시점에만 검사하는데
+터미널에선 그 시점이 거의 오지 않는다.
+
+```lua
+vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter", "CursorHold", ... }, {
+  callback = function()
+    vim.schedule(function() vim.cmd.checktime() end)   -- ★ schedule 필수
+  end,
+})
+```
+
+> **`vim.schedule` 이 핵심이다.** `:checktime` 은 자동명령 실행 중이면 검사를
+> 연기한다(버퍼를 중간에 갈아끼우지 않으려고). 자동명령 밖으로 빼야 즉시 반영된다.
+> 이걸 빼먹으면 콜백은 실행되는데 파일은 안 바뀌는, 원인 찾기 어려운 증상이 된다.
+
+`updatetime` 이 250ms 라 커서를 잠깐 멈추면 반영된다. 다시 읽으면 알림이 뜬다.
+
+> 더 나아가려면 `coder/claudecode.nvim`(3.0k★)이 있다 — VS Code 확장과 같은
+> WebSocket MCP 를 nvim 에 구현해서, Claude 가 파일을 몰래 쓰는 대신 **nvim diff 창에
+> 변경을 제안**하고 `:w` 수락 / `:q` 거부하는 방식이다. 다만 nvim 안에서 Claude 를
+> 띄우는 워크플로로 옮겨갈 때 값어치가 나온다(+snacks.nvim 의존).
+
 ### 자동완성 — `'autocomplete'` 는 0.12 신규
 
 설정은 `lua/config/completion.lua`.
@@ -103,7 +131,7 @@ vim.bo[ev.buf].complete = ".^5,w^5,b^5,o"
 
 ---
 
-## 2. 플러그인 7개
+## 2. 플러그인 9개
 
 ### ★ render-markdown.nvim — 이 설정의 핵심
 
@@ -129,8 +157,13 @@ vim.bo[ev.buf].complete = ".^5,w^5,b^5,o"
 - **Lua**: 저장 시 자동 포맷 (stylua)
 - **마크다운**: 수동만 — `<leader>cf`
 
-마크다운을 자동 포맷에서 뺀 이유: prettier 가 표를 정렬할 때 한글 글자 폭 계산이 어긋나
-오히려 표가 깨질 수 있다. 산문에 저장할 때마다 손대는 건 위험하다.
+마크다운을 자동 포맷에서 뺀 이유 — **한글 때문이 아니다**(실측으로 확인함):
+prettier 는 표를 글자 폭 기준으로 정확히 정렬하고(`:---:` 지시자도 존중),
+`proseWrap=preserve` 라 문단을 재배치하지 않는다.
+
+실제 이유는 **정규화**다. 저장할 때마다 리스트 마커(`*`/`-`)·중첩 들여쓰기(4→2칸)·
+`1)`→`1.` 을 바꾸므로, 남이 쓴 문서나 캡처된 노트를 열었다 저장만 해도 diff 가 생긴다.
+자동이 편하면 `plugins.lua` 의 `format_on_save` 에서 filetype 조건을 지우면 된다.
 
 ### fzf-lua
 
@@ -170,6 +203,43 @@ ibhagwan · [repo](https://github.com/ibhagwan/fzf-lua)
 `plugins.lua` 를 `flexoki-moon` + `background = "dark"` 로.
 
 lualine 은 마크다운 버퍼에서 **단어 수**를 표시한다 (한글 포함).
+
+### nvim-surround
+
+kylechui · [repo](https://github.com/kylechui/nvim-surround)
+
+텍스트 감싸기. **마크다운 산문에서 가장 자주 하는 동작**이고 0.12 에 대체재가 없다.
+
+마크다운 버퍼에서만 `b`/`i`/`c`/`l` 대상을 더한다(`after/ftplugin/markdown.lua`) —
+전역에 넣으면 Lua 편집에서 기본 대상 `b`=`()` 를 덮어쓴다.
+
+| 키 | 결과 |
+|---|---|
+| `ysiwb` · (비주얼)`Sb` | `**굵게**` |
+| `ysiwi` · `Si` | `*기울임*` |
+| `ysiwc` · `Sc` | `` `코드` `` |
+| `ysiwl` · `Sl` | `[링크]()` |
+| `dsb` / `csbi` | 제거 / 굵게→기울임 |
+
+`ysiw*` 를 두 번 쳐도 `**굵게**` 가 안 되기 때문에(두 번째가 붙은 `*` 를 단어로 잡는다)
+전용 대상이 필요했다. `b` 는 기본 별칭이 `()` 라 `aliases = { b = false }` 로 통과시켰다.
+
+### gitsigns.nvim
+
+lewis6991 · [repo](https://github.com/lewis6991/gitsigns.nvim)
+
+여백 변경 표시 + hunk 조작. git 플러그인 중 채택률 1위(dotfyle 설정 1,764개로 2위의 2배).
+
+**커밋·로그·브랜치는 넣지 않았다** — fugitive·neogit·lazygit 은 Claude Code 로 커밋하는
+워크플로와 정면으로 겹친다. 목록 조회가 필요하면 fzf-lua 의 git 픽커가 이미 있다.
+
+| 키 | 동작 |
+|---|---|
+| `]c` / `[c` | 다음 · 이전 변경 |
+| `<leader>hp` `<leader>hs` `<leader>hr` | 미리보기 · stage · 되돌리기 |
+| `<leader>hb` `<leader>ht` | 이 줄 blame · 상시표시 토글 |
+
+산문에선 문단을 고치면 온 줄이 표시돼 시끄러우므로 상시 blame 은 꺼뒀다.
 
 ### zen-mode.nvim
 
