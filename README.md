@@ -4,8 +4,8 @@
 2026-08-08 기준으로 생태계를 재평가해 처음부터 다시 구성.
 
 - **Neovim**: 0.12.4 (Homebrew)
-- **플러그인**: 9개 — 내장 `vim.pack` 으로 관리
-- **시작 시간**: 약 34ms (지연 로딩 없이 전부 즉시 로드)
+- **플러그인**: 7개 (14MB) — 내장 `vim.pack` 으로 관리
+- **시작 시간**: 약 31ms (지연 로딩 없이 전부 즉시 로드)
 
 ```
 ~/.config/nvim/
@@ -38,6 +38,8 @@
 | 구문 하이라이팅 | `vim.treesitter.start()` | nvim-treesitter (+ 파서 빌드 체계 전체) |
 | LSP 클라이언트 설정 | `vim.lsp.config` / `vim.lsp.enable` | nvim-lspconfig, mason-lspconfig |
 | 스니펫 확장 | `vim.snippet` | LuaSnip, friendly-snippets, cmp_luasnip |
+| LSP 바이너리 설치 | (brew) | mason.nvim, mason-lspconfig |
+| Lua 라이브러리 주입 | `workspace.library` 직접 지정 | lazydev.nvim (메모리 205MB 더 씀) |
 | **자동완성** | `'autocomplete'` + `'complete'` + `vim.lsp.completion` | **blink.cmp** (그 전엔 nvim-cmp + 소스 6개) |
 
 ### treesitter — 파서가 동봉돼 있다
@@ -101,7 +103,7 @@ vim.bo[ev.buf].complete = ".^5,w^5,b^5,o"
 
 ---
 
-## 2. 플러그인 9개
+## 2. 플러그인 7개
 
 ### ★ render-markdown.nvim — 이 설정의 핵심
 
@@ -117,41 +119,6 @@ vim.bo[ev.buf].complete = ".^5,w^5,b^5,o"
 - 설정: `lua/config/plugins.lua`
 - 토글: `<leader>tr` (원문 마크업 보기)
 - `conceallevel` 을 3으로 올려 `**`, `#` 같은 기호를 숨긴다
-
-### lazydev.nvim
-
-`504K` · folke · [repo](https://github.com/folke/lazydev.nvim)
-
-**Neovim 플러그인 작성용.** lua_ls 에게 열려 있는 파일이 실제로 `require` 한 모듈만
-골라서 워크스페이스 라이브러리로 물려준다. 전신인 neodev.nvim 은 런타임 전체를 한 번에
-로드해서 lua_ls 를 느리게 만들었고, lazydev 는 그걸 지연 로딩으로 바꾼 것이다.
-
-**이건 순수하게 메모리 최적화다 — 기능상 필수가 아니다.** 실측 비교:
-
-| | `require("fzf` 후보 | `vim.api` | lua_ls RSS |
-|---|---|---|---|
-| lazydev | 80개 | ✅ | **357 MB** |
-| 정적 `workspace.library` | 80개 | ✅ | **562 MB** |
-
-완성 결과는 동일하고 차이는 메모리 205MB(36%)뿐이다. 504KB 플러그인으로 205MB 를
-아끼는 셈이라 유지하지만, 빼고 `lsp/lua_ls.lua` 에 `workspace.library` 를 직접
-박아도 기능 손실은 없다.
-
-> `require("...")` 모듈 경로 완성은 **lua_ls 자체 기능**이다(위 표의 80개).
-> lazydev 가 제공하던 전용 완성 소스는 내장 자동완성으로 넘어오면서 뺐는데,
-> 후보 개수가 그대로인 걸로 확인했다.
-
-### mason.nvim
-
-`3.8M` · **mason-org/** · [repo](https://github.com/mason-org/mason.nvim)
-
-LSP 서버·포매터 **바이너리 설치기**. 설정은 하지 않는다 — 그건 0.12 내장 몫.
-
-> ⚠️ 저장소가 `williamboman/` → `mason-org/` 로 이전했다. 옛 주소는 구버전에 멈춰 있다.
-> `mason-lspconfig` 도 v2 에서 역할이 축소됐고, 이 설정은 `vim.lsp.enable` 을 직접
-> 호출하므로 아예 쓰지 않는다.
-
-`:Mason` 으로 UI, `<leader>pm` 으로 열기.
 
 ### conform.nvim
 
@@ -212,22 +179,32 @@ lualine 은 마크다운 버퍼에서 **단어 수**를 표시한다 (한글 포
 
 ---
 
-## 3. Mason 으로 설치한 외부 도구 4개
+## 3. 외부 도구 — 전부 brew
 
-`~/.local/share/nvim/mason/bin/` 에 설치됨. 플러그인이 아니라 독립 실행 바이너리.
+**mason.nvim 을 제거하고 brew 로 일원화했다.** 쓰는 도구 5개가 모두 brew 에 있어서
+`:MasonInstall` 대신 `brew install`, 갱신은 `brew upgrade` 한 번으로 끝난다.
+이미 macism·fzf·rg·fd·bat 을 brew 로 쓰고 있어 창구가 하나로 모인다.
+
+```
+brew install lua-language-server markdown-oxide stylua prettier marksman
+```
 
 | 도구 | 버전 | 역할 |
 |---|---|---|
-| **markdown-oxide** | 0.25.12 | 마크다운 PKM LSP — `[[위키링크]]` 완성, **백링크**, 데일리 노트, 태그, 헤딩/블록 참조, `gO` 목차. 5절 참고 |
-| **lua-language-server** | 3.15.0 | Lua LSP (lazydev 와 함께 동작) |
+| **markdown-oxide** | 0.25.12 | 마크다운 PKM LSP — `[[위키링크]]` 완성, **백링크**, 데일리 노트, 태그. 5절 참고 |
+| **lua-language-server** | 3.19.0 | Lua LSP |
 | **stylua** | 2.5.2 | Lua 포매터 — 저장 시 자동 |
 | **prettier** | 3.9.6 | 마크다운 포매터 — `<leader>cf` 수동 |
 
-추가 설치: `:MasonInstall <이름>`
+`lsp/*.lua` 의 `cmd` 는 전부 이름만 쓴다(`{ "markdown-oxide" }`) — PATH 로 해결되므로
+설치 경로가 바뀌어도 설정을 고칠 필요가 없다.
+
+> 옛 `~/.local/share/nvim/mason/`(86MB)은 이제 PATH 에 주입되지 않아 무해하지만
+> 죽은 용량이다. 지우려면 `rm -rf ~/.local/share/nvim/mason`.
 
 ### 비활성: marksman
 
-markdown-oxide 로 대체했다. 바이너리와 `lsp/marksman.lua` 는 남겨뒀으니
+markdown-oxide 로 대체했다. 바이너리(brew)와 `lsp/marksman.lua` 는 남겨뒀으니
 `lua/config/lsp.lua` 의 `vim.lsp.enable` 에서 `"markdown_oxide"` 를 `"marksman"` 으로
 바꾸면 즉시 원복된다. **둘을 동시에 켜지 말 것** — 같은 버퍼에 붙어 링크 완성 후보가 중복된다.
 
@@ -238,8 +215,8 @@ Grammarly 대안, Automattic 관리)인데 **한국어를 지원하지 않아** 
 
 영문 문서를 쓸 때만 켜기:
 ```
-:MasonInstall harper-ls
-:lua vim.lsp.enable("harper_ls")      -- 일회성
+brew install harper                   -- 셸에서
+:lua vim.lsp.enable("harper_ls")      -- nvim 에서, 일회성
 ```
 상시로 쓰려면 `lua/config/lsp.lua` 의 `vim.lsp.enable` 목록에서 주석을 푼다.
 
@@ -385,5 +362,5 @@ markdown-oxide 는 버퍼가 있는 위치에서 위로 올라가며 `.moxide.to
 ### vim.pack 의 한계
 
 내장 문서가 **experimental** 로 명시하고 있다(`:h vim.pack`, pack.txt:211).
-이벤트/파일타입 기반 지연 로딩이 없어서 전부 시작 시 로드된다. 9개 기준 34ms 라 문제 없지만,
+이벤트/파일타입 기반 지연 로딩이 없어서 전부 시작 시 로드된다. 7개 기준 31ms 라 문제 없지만,
 플러그인이 30개를 넘어가면 lazy.nvim 쪽이 유리해진다.

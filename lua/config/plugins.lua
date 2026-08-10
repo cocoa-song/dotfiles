@@ -21,12 +21,6 @@ vim.pack.add({
   -- 집중 글쓰기
   { src = gh("folke/zen-mode.nvim") },
 
-  -- Lua 플러그인 개발: vim API 타입 + require() 완성
-  { src = gh("folke/lazydev.nvim") },
-
-  -- LSP 서버 · 포매터 바이너리 설치기 (설정은 안 함 — 그건 0.12 내장 몫)
-  { src = gh("mason-org/mason.nvim") },
-
   -- 포매팅
   { src = gh("stevearc/conform.nvim") },
 
@@ -91,19 +85,6 @@ require("render-markdown").setup({
   quote = { icon = "▍" },
   pipe_table = { preset = "round" },
   link = { wiki = { icon = "󰌷 ", highlight = "RenderMarkdownWikiLink" } },
-})
-
--- --------------------------------------------- Lua 플러그인 개발 지원
--- lua_ls 에 Neovim 런타임 타입을 lazy 하게 물려준다 (neodev.nvim 대체).
-require("lazydev").setup({
-  library = {
-    { path = "${3rd}/luv/library", words = { "vim%.uv" } },
-  },
-})
-
--- ------------------------------------------------------ 바이너리 설치
-require("mason").setup({
-  ui = { border = "rounded" },
 })
 
 -- ------------------------------------------------------------ 포매팅
