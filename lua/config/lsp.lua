@@ -25,11 +25,14 @@ vim.api.nvim_create_autocmd("LspAttach", {
       vim.keymap.set("n", keys, fn, { buffer = ev.buf, desc = "LSP: " .. desc })
     end
 
+    local fzf = require("fzf-lua")
     map("grn", vim.lsp.buf.rename, "이름 바꾸기")
     map("gra", vim.lsp.buf.code_action, "코드 액션")
-    map("grr", "<cmd>Telescope lsp_references<CR>", "참조 찾기")
-    map("gd", "<cmd>Telescope lsp_definitions<CR>", "정의로 이동")
-    map("gO", "<cmd>Telescope lsp_document_symbols<CR>", "문서 심볼(마크다운=목차)")
+    map("grr", fzf.lsp_references, "참조 찾기(마크다운=백링크)")
+    map("gd", fzf.lsp_definitions, "정의로 이동")
+    map("gO", fzf.lsp_document_symbols, "문서 심볼(마크다운=목차)")
+    -- 볼트 전체의 노트·헤딩·태그를 한 목록으로 (markdown_oxide 가 제공)
+    map("gW", fzf.lsp_live_workspace_symbols, "워크스페이스 심볼")
     map("K", vim.lsp.buf.hover, "호버")
 
     -- Lua 작성 중엔 인레이 힌트가 유용, 산문에선 방해

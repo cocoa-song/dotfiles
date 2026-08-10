@@ -34,8 +34,7 @@ vim.pack.add({
   { src = gh("stevearc/conform.nvim") },
 
   -- 파일/내용 검색
-  { src = gh("nvim-lua/plenary.nvim") },
-  { src = gh("nvim-telescope/telescope.nvim") },
+  { src = gh("ibhagwan/fzf-lua") },
 })
 
 -- ---------------------------------------------------------------- 외형
@@ -159,28 +158,39 @@ require("conform").setup({
 })
 
 -- -------------------------------------------------------------- 검색
-local telescope = require("telescope")
-local actions = require("telescope.actions")
-
-telescope.setup({
-  defaults = {
-    mappings = {
-      i = {
-        ["<C-j>"] = actions.move_selection_next,
-        ["<C-k>"] = actions.move_selection_previous,
-        ["<Esc>"] = actions.close,
-      },
-    },
-    file_ignore_patterns = { "%.git/", "node_modules/", "%.obsidian/", "build/", "dist/" },
-    vimgrep_arguments = {
-      "rg", "--color=never", "--no-heading", "--with-filename",
-      "--line-number", "--column", "--smart-case",
+-- fzf-lua — 목록을 Lua 가 들고 있지 않고 fzf 프로세스가 처리한다.
+-- telescope + plenary(2개, 5.6MB) 를 1개로 줄이면서 큰 저장소에서 더 빠르다.
+-- 외부 의존: fzf(brew) · fd · rg · bat(미리보기 문법 강조)
+require("fzf-lua").setup({
+  "default-title", -- 각 창에 제목 표시
+  winopts = {
+    height = 0.85,
+    width = 0.85,
+    preview = {
+      layout = "flex", -- 창이 좁으면 자동으로 위아래 배치
+      scrollbar = false,
     },
   },
-  pickers = {
-    find_files = { find_command = { "fd", "--type", "f", "--strip-cwd-prefix" } },
-    buffers = { sort_lastused = true, ignore_current_buffer = true },
+  keymap = {
+    builtin = {
+      ["<C-u>"] = "preview-page-up",
+      ["<C-d>"] = "preview-page-down",
+    },
+    fzf = {
+      -- telescope 에서 쓰던 이동 키를 그대로 유지
+      ["ctrl-j"] = "down",
+      ["ctrl-k"] = "up",
+      ["ctrl-q"] = "select-all+accept", -- 전체를 quickfix 로
+    },
   },
+  files = {
+    cmd = "fd --type f --strip-cwd-prefix --hidden --exclude .git",
+  },
+  grep = {
+    rg_opts = "--column --line-number --no-heading --color=always --smart-case --hidden -g '!.git'",
+  },
+  -- 노트 검색에서 Obsidian 설정 폴더가 섞이지 않게
+  file_ignore_patterns = { "%.obsidian/", "node_modules/", "/build/", "/dist/" },
 })
 
 -- ------------------------------------------------------- 집중 글쓰기

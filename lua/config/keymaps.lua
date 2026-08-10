@@ -14,31 +14,33 @@ map("x", "J", ":m '>+1<CR>gv=gv", { desc = "선택 영역 아래로" })
 map("x", "K", ":m '<-2<CR>gv=gv", { desc = "선택 영역 위로" })
 
 -- ----------------------------------------------------------- 찾기
-local t = require("telescope.builtin")
-map("n", "<leader>ff", t.find_files, { desc = "파일 찾기" })
+local t = require("fzf-lua")
+map("n", "<leader>ff", t.files, { desc = "파일 찾기" })
 map("n", "<leader>fg", t.live_grep, { desc = "내용 검색" })
 map("n", "<leader>fb", t.buffers, { desc = "버퍼" })
 map("n", "<leader>fr", t.oldfiles, { desc = "최근 파일" })
-map("n", "<leader>fh", t.help_tags, { desc = "도움말" })
-map("n", "<leader>fs", t.grep_string, { desc = "커서 아래 단어 검색" })
-map("n", "<leader>fd", t.diagnostics, { desc = "진단 목록" })
+map("n", "<leader>fh", t.helptags, { desc = "도움말" })
+map("n", "<leader>fs", t.grep_cword, { desc = "커서 아래 단어 검색" })
+map("n", "<leader>fd", t.diagnostics_document, { desc = "진단 목록" })
+map("n", "<leader>fk", t.keymaps, { desc = "키맵 찾기" })
+map("n", "<leader>fz", t.resume, { desc = "직전 검색 이어서" })
 -- 현재 파일 안에서 찾기 (긴 노트에서 유용)
-map("n", "<leader>/", t.current_buffer_fuzzy_find, { desc = "이 문서 안에서 찾기" })
+map("n", "<leader>/", t.blines, { desc = "이 문서 안에서 찾기" })
 
 -- ------------------------------------------------------------- 노트
 -- [[링크]] 완성 · 백링크 · 데일리 노트는 markdown_oxide LSP 가 제공한다.
 -- 여기 있는 건 "노트 폴더로 가는 길" 뿐이다.
 --
 -- 노트 루트는 .moxide.toml 로 표시돼 있어 LSP 는 경로를 몰라도 되지만,
--- 텔레스코프는 시작 지점이 필요해서 이 상수 하나만 둔다.
+-- 검색은 시작 지점이 필요해서 이 상수 하나만 둔다.
 local NOTES = vim.env.HOME .. "/notes"
 
 map("n", "<leader>nf", function()
-  t.find_files({ cwd = NOTES, prompt_title = "노트 파일" })
+  t.files({ cwd = NOTES, winopts = { title = " 노트 파일 " } })
 end, { desc = "노트 파일 찾기" })
 
 map("n", "<leader>ng", function()
-  t.live_grep({ cwd = NOTES, prompt_title = "노트 검색" })
+  t.live_grep({ cwd = NOTES, winopts = { title = " 노트 검색 " } })
 end, { desc = "노트 내용 검색" })
 
 -- 새 노트: 이름만 받고 연다. 첫 저장 전까지 파일은 만들어지지 않는다.

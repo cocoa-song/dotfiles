@@ -4,8 +4,8 @@
 2026-08-08 기준으로 생태계를 재평가해 처음부터 다시 구성.
 
 - **Neovim**: 0.12.4 (Homebrew)
-- **플러그인**: 11개 (약 28MB) — 내장 `vim.pack` 으로 관리
-- **시작 시간**: 약 80ms (지연 로딩 없이 전부 즉시 로드)
+- **플러그인**: 10개 — 내장 `vim.pack` 으로 관리
+- **시작 시간**: 약 41ms (지연 로딩 없이 전부 즉시 로드)
 
 ```
 ~/.config/nvim/
@@ -60,7 +60,7 @@ markdown  markdown_inline  lua  vim  vimdoc  query  c
 
 ---
 
-## 2. 플러그인 11개
+## 2. 플러그인 10개
 
 ### ★ render-markdown.nvim — 이 설정의 핵심
 
@@ -135,20 +135,29 @@ LSP 서버·포매터 **바이너리 설치기**. 설정은 하지 않는다 —
 마크다운을 자동 포맷에서 뺀 이유: prettier 가 표를 정렬할 때 한글 글자 폭 계산이 어긋나
 오히려 표가 깨질 수 있다. 산문에 저장할 때마다 손대는 건 위험하다.
 
-### telescope.nvim + plenary.nvim
+### fzf-lua
 
-`4.0M` + `1.6M` · [repo](https://github.com/nvim-telescope/telescope.nvim)
+ibhagwan · [repo](https://github.com/ibhagwan/fzf-lua)
 
-파일·내용 검색. 기존 설정에서 쓰던 것이라 키맵을 그대로 유지했다.
-확장(`fzf-native`, `ui-select`)은 뺐다 — 빌드 단계가 생기고 이 규모에선 체감 차이가 없다.
+파일·내용 검색. **telescope.nvim + plenary.nvim(2개, 5.6MB)를 이걸로 교체했다.**
+목록을 Lua 가 들고 있지 않고 `fzf` 프로세스가 처리하므로 파일이 많아도 즉시 뜨고,
+미리보기는 `bat` 이 문법 강조까지 해준다.
+
+외부 의존: `fzf`(brew) · `fd` · `rg` · `bat`
 
 | 키 | 동작 |
 |---|---|
-| `<leader>ff` | 파일 찾기 |
+| `<leader>ff` | 파일 찾기 (fd) |
 | `<leader>fg` | 내용 검색 (ripgrep) |
 | `<leader>fb` `<leader>fr` | 버퍼 · 최근 파일 |
+| `<leader>fs` `<leader>fh` | 커서 아래 단어 검색 · 도움말 |
+| `<leader>fd` `<leader>fk` | 진단 목록 · 키맵 찾기 |
+| `<leader>fz` | **직전 검색 이어서** (resume) |
 | `<leader>/` | **현재 문서 안에서** 찾기 (긴 노트용) |
 | `<leader>nf` `<leader>ng` | 노트 폴더 파일 찾기 · 내용 검색 |
+
+창 안에서: `<C-j>`/`<C-k>` 이동 · `<C-u>`/`<C-d>` 미리보기 스크롤 ·
+`<C-q>` 전체를 quickfix 로 · `<C-x>`/`<C-v>`/`<C-t>` 분할·탭으로 열기
 
 ### tokyonight.nvim / lualine.nvim / nvim-web-devicons
 
@@ -202,8 +211,10 @@ Grammarly 대안, Automattic 관리)인데 **한국어를 지원하지 않아** 
 
 | 도구 | 상태 | 용도 |
 |---|---|---|
-| `ripgrep` (rg) | ✅ 설치됨 | telescope 내용 검색 |
-| `fd` | ✅ 설치됨 | telescope 파일 찾기 |
+| `ripgrep` (rg) | ✅ 설치됨 | fzf-lua 내용 검색 · `grepprg` 기본값 |
+| `fd` | ✅ 설치됨 | fzf-lua 파일 찾기 |
+| `fzf` | ✅ 0.74.2 | fzf-lua 백엔드 (`brew install fzf`) |
+| `bat` | ✅ 설치됨 | fzf-lua 미리보기 문법 강조 |
 | `node` | ✅ v22.23.1 | prettier 실행 |
 | `git` | ✅ | vim.pack 이 플러그인을 git 으로 관리 |
 | **`macism`** | ✅ 설치됨 | **한영 자동전환** ↓ |
@@ -219,18 +230,27 @@ brew trust laishulu/homebrew    # 서드파티 탭이라 신뢰 승인 필요
 brew install macism
 ```
 
-동작: `InsertLeave` 에 현재 입력기를 기억하고 ABC 로 전환 → `InsertEnter` 에 복원.
+동작: `InsertLeave` 에 ABC 로 전환 → `InsertEnter` 에 직전 한글 입력기로 복원.
 전부 `vim.system` 비동기라 모드 전환이 느려지지 않는다.
 
-한글 입력기 ID 는 **하드코딩하지 않고 런타임에 감지**한다.
-(이 환경은 속 입력기 `com.kiding.inputmethod.sok.mode` — Apple 두벌식이 아니다)
+한글 입력기 ID 는 **하드코딩하지 않고 시작 시 1회 감지**한다(현재 환경 = Apple 두벌식).
+입력기를 갈아끼워도 설정을 고칠 필요가 없다.
+
+> **경쟁 조건 주의** — macism 읽기는 ~50ms 걸린다(실측). "현재 입력기를 읽고 →
+> 그 결과로 전환"하는 2단 비동기로 짜면, `Esc` 직후 곧바로 `i` 를 눌렀을 때
+> 늦게 도착한 콜백이 한글 복원을 영문으로 덮어쓴다(재현율 5/5).
+> 그래서 핫 패스에서는 조회를 하지 않고, **단일 슬롯 큐**로 "마지막으로 원하는 상태"
+> 하나만 남겨 합친다. 세대 카운터가 늦게 온 조회 콜백을 버린다.
 
 | 명령 | 동작 |
 |---|---|
-| `:ImeDoctor` | 현재 입력기 · 복원 대상 · 권한 안내 |
+| `:ImeDoctor` | 실제로 전환해보고 되돌려지는지까지 검사 |
+| `:ImeSync` | 지금 쓰는 한글 입력기를 복원 대상으로 재감지 |
 | `:ImeRestoreToggle` | Insert 진입 시 한글 복원 끄기/켜기 |
 
-전환이 안 되면 **시스템 설정 → 개인정보 보호 및 보안 → 손쉬운 사용**에서 터미널 앱에 권한을 준다.
+전환이 안 되면 `:ImeDoctor` 를 먼저 돌린다. **일부 서드파티 입력기는 외부에서 건
+ABC 전환을 스스로 되돌린다** — 속 입력기의 "ABC 입력기 제한" 옵션이 그랬다(실측 ~100ms).
+그 경우 설정으로는 고칠 수 없고 입력기 쪽 옵션을 꺼야 한다.
 
 ---
 
@@ -327,5 +347,5 @@ markdown-oxide 는 버퍼가 있는 위치에서 위로 올라가며 `.moxide.to
 ### vim.pack 의 한계
 
 내장 문서가 **experimental** 로 명시하고 있다(`:h vim.pack`, pack.txt:211).
-이벤트/파일타입 기반 지연 로딩이 없어서 전부 시작 시 로드된다. 11개 기준 80ms 라 문제 없지만,
+이벤트/파일타입 기반 지연 로딩이 없어서 전부 시작 시 로드된다. 10개 기준 41ms 라 문제 없지만,
 플러그인이 30개를 넘어가면 lazy.nvim 쪽이 유리해진다.
