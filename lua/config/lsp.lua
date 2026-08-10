@@ -4,10 +4,8 @@
 -- 코어에 들어왔고, 서버별 설정은 runtimepath 의 `lsp/<name>.lua` 에서 자동으로 읽힌다.
 -- → 이 설정의 서버 정의는 ~/.config/nvim/lsp/*.lua 에 있다.
 
--- 모든 서버에 공통으로 얹히는 설정
-vim.lsp.config("*", {
-  capabilities = require("blink.cmp").get_lsp_capabilities(),
-})
+-- capabilities 는 손대지 않는다. 0.12 기본값이 이미 snippetSupport·resolveSupport 를
+-- 포함하고, 완성은 vim.lsp.completion(내장)이 처리한다.
 
 vim.lsp.enable({
   "lua_ls",         -- Lua (Neovim 플러그인 작성)
@@ -35,9 +33,21 @@ vim.api.nvim_create_autocmd("LspAttach", {
     map("gW", fzf.lsp_live_workspace_symbols, "워크스페이스 심볼")
     map("K", vim.lsp.buf.hover, "호버")
 
-    -- Lua 작성 중엔 인레이 힌트가 유용, 산문에선 방해
     local client = vim.lsp.get_client_by_id(ev.data.client_id)
-    if client and client:supports_method("textDocument/inlayHint") and vim.bo[ev.buf].filetype == "lua" then
+    if not client then
+      return
+    end
+
+    -- 내장 자동완성에 LSP 를 소스로 물린다.
+    -- enable() 이 omnifunc 를 설정하므로, 'complete' 에 "o" 를 더하면
+    -- 버퍼 단어와 LSP 후보가 한 팝업에 섞인다.
+    if client:supports_method("textDocument/completion") then
+      vim.lsp.completion.enable(true, client.id, ev.buf, { autotrigger = true })
+      vim.bo[ev.buf].complete = ".^5,w^5,b^5,o"
+    end
+
+    -- Lua 작성 중엔 인레이 힌트가 유용, 산문에선 방해
+    if client:supports_method("textDocument/inlayHint") and vim.bo[ev.buf].filetype == "lua" then
       vim.lsp.inlay_hint.enable(true, { bufnr = ev.buf })
     end
   end,

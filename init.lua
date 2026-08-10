@@ -18,6 +18,7 @@ end
 
 require("config.options")
 require("config.plugins")
+require("config.completion")
 require("config.lsp")
 require("config.keymaps")
 require("config.ime")

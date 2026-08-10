@@ -4,8 +4,8 @@
 2026-08-08 기준으로 생태계를 재평가해 처음부터 다시 구성.
 
 - **Neovim**: 0.12.4 (Homebrew)
-- **플러그인**: 10개 — 내장 `vim.pack` 으로 관리
-- **시작 시간**: 약 41ms (지연 로딩 없이 전부 즉시 로드)
+- **플러그인**: 9개 — 내장 `vim.pack` 으로 관리
+- **시작 시간**: 약 34ms (지연 로딩 없이 전부 즉시 로드)
 
 ```
 ~/.config/nvim/
@@ -13,6 +13,7 @@
 ├── lua/config/
 │   ├── options.lua             전역 옵션 · treesitter · 자동명령
 │   ├── plugins.lua             vim.pack.add + 각 플러그인 setup
+│   ├── completion.lua          자동완성 (0.12 내장)
 │   ├── lsp.lua                 vim.lsp.enable · LspAttach 키맵 · 진단
 │   ├── keymaps.lua             전역 키맵
 │   └── ime.lua                 한영 자동전환 (macOS)
@@ -37,6 +38,7 @@
 | 구문 하이라이팅 | `vim.treesitter.start()` | nvim-treesitter (+ 파서 빌드 체계 전체) |
 | LSP 클라이언트 설정 | `vim.lsp.config` / `vim.lsp.enable` | nvim-lspconfig, mason-lspconfig |
 | 스니펫 확장 | `vim.snippet` | LuaSnip, friendly-snippets, cmp_luasnip |
+| **자동완성** | `'autocomplete'` + `'complete'` + `vim.lsp.completion` | **blink.cmp** (그 전엔 nvim-cmp + 소스 6개) |
 
 ### treesitter — 파서가 동봉돼 있다
 
@@ -58,9 +60,48 @@ markdown  markdown_inline  lua  vim  vimdoc  query  c
 `vim.lsp.enable("marksman")` 을 호출하면 Neovim 이 runtimepath 에서 `lsp/marksman.lua` 를
 찾아 읽는다. 그래서 서버 설정이 `lua/` 가 아니라 최상위 `lsp/` 에 있다.
 
+### 자동완성 — `'autocomplete'` 는 0.12 신규
+
+설정은 `lua/config/completion.lua`.
+
+```lua
+vim.o.autocomplete = true
+vim.o.autocompletedelay = 80
+vim.o.completeopt = "menuone,noselect,popup,fuzzy"
+vim.o.complete = ".^5,w^5,b^5"        -- LspAttach 에서 ",o"(LSP) 를 더한다
+```
+
+**여러 소스를 한 팝업에 병합하는 건 `'complete'` 가 한다** — `.`(현재 버퍼)
+`w`(다른 창) `b`(로드된 버퍼) `o`(omnifunc=LSP) `F{func}`(임의 함수, 여러 개 가능).
+소스 뒤 `^N` 은 그 소스의 후보 개수 상한.
+
+내부는 **감쇠 타임슬라이스**다 — 앞선 소스에 시간을 더 주고 느린 소스는 빠르게
+강등하되 전부 실행한다. `'complete'` 에 `F`/`o` 가 있으면 LSP 를 위해 타임아웃을
+~1s 로 늘린다(`'autocompletetimeout'`, 기본 80ms). `:h ins-autocompletion`
+
+LSP 연결은 `lua/config/lsp.lua` 의 `LspAttach` 에서:
+
+```lua
+vim.lsp.completion.enable(true, client.id, ev.buf, { autotrigger = true })
+vim.bo[ev.buf].complete = ".^5,w^5,b^5,o"
+```
+
+**산문 대응** — `noselect` 라 아무것도 미리 선택되지 않는다. 그래서 `<CR>` 은 그냥
+줄바꿈이고, 의식적으로 `<C-n>` 으로 고른 뒤에만 확정된다. 한글로 글 쓰다 Enter 칠 때마다
+엉뚱한 단어가 들어가는 사고를 막는 핵심 설정이다.
+
+| 키 | 동작 |
+|---|---|
+| (타이핑) | 80ms 뒤 자동으로 팝업 |
+| `<C-n>` / `<C-p>` · `<Tab>` / `<S-Tab>` | 후보 이동 (팝업 없으면 원래 Tab) |
+| `<CR>` | 골랐으면 확정, 아니면 **줄바꿈** |
+| `<C-y>` / `<C-e>` | 확정 / 닫기 |
+| `<C-l>` / `<C-h>` | 스니펫 다음 · 이전 자리 (`vim.snippet`) |
+| `<C-x><C-f>` | 파일 경로 완성 (내장 ins-completion) |
+
 ---
 
-## 2. 플러그인 10개
+## 2. 플러그인 9개
 
 ### ★ render-markdown.nvim — 이 설정의 핵심
 
@@ -77,39 +118,28 @@ markdown  markdown_inline  lua  vim  vimdoc  query  c
 - 토글: `<leader>tr` (원문 마크업 보기)
 - `conceallevel` 을 3으로 올려 `**`, `#` 같은 기호를 숨긴다
 
-### blink.cmp
-
-`7.0M` · v1.10.x 고정 · [repo](https://github.com/saghen/blink.cmp)
-
-자동완성. **nvim-cmp + 소스 6개를 1개로 대체.**
-buffer / path / snippet / LSP 소스가 내장이고, 퍼지 매칭은 Rust 바이너리(첫 실행 시 자동 다운로드).
-
-- nvim-cmp: 기본 60ms 디바운스 + 처리 중 2–50ms 끊김
-- blink.cmp: 키 입력마다 0.5–4ms
-
-**v1 계열로 고정**(`vim.version.range("1.*")`)했다. v2 는 파괴적 변경이 진행 중이다.
-
-산문용 조정 — `preselect = false`. 자동 선택을 끄면 메뉴가 떠 있어도 Enter 가 줄바꿈으로 남는다.
-이게 없으면 글 쓰다가 Enter 칠 때마다 엉뚱한 단어가 들어간다.
-
-| 키 | 동작 |
-|---|---|
-| `<C-space>` | 완성 메뉴 열기 |
-| `<CR>` | 선택 항목 확정 (선택 안 했으면 줄바꿈) |
-| `<C-n>` / `<C-p>` | 이동 |
-| `<Tab>` / `<S-Tab>` | 스니펫 자리 이동 |
-
 ### lazydev.nvim
 
 `504K` · folke · [repo](https://github.com/folke/lazydev.nvim)
 
 **Neovim 플러그인 작성용.** lua_ls 에게 열려 있는 파일이 실제로 `require` 한 모듈만
-골라서 워크스페이스 라이브러리로 물려준다. `vim.api.*`, `vim.fn.*` 타입과 완성이 붙는다.
+골라서 워크스페이스 라이브러리로 물려준다. 전신인 neodev.nvim 은 런타임 전체를 한 번에
+로드해서 lua_ls 를 느리게 만들었고, lazydev 는 그걸 지연 로딩으로 바꾼 것이다.
 
-전신인 neodev.nvim 은 Neovim 런타임 전체를 한 번에 로드해서 lua_ls 를 느리게 만들었다.
-lazydev 는 그걸 지연 로딩으로 바꾼 것. neodev 는 이제 쓰지 않는다.
+**이건 순수하게 메모리 최적화다 — 기능상 필수가 아니다.** 실측 비교:
 
-blink.cmp 에 `lazydev` 소스를 Lua 파일에서만 우선순위 100으로 물려놨다 (`sources.per_filetype`).
+| | `require("fzf` 후보 | `vim.api` | lua_ls RSS |
+|---|---|---|---|
+| lazydev | 80개 | ✅ | **357 MB** |
+| 정적 `workspace.library` | 80개 | ✅ | **562 MB** |
+
+완성 결과는 동일하고 차이는 메모리 205MB(36%)뿐이다. 504KB 플러그인으로 205MB 를
+아끼는 셈이라 유지하지만, 빼고 `lsp/lua_ls.lua` 에 `workspace.library` 를 직접
+박아도 기능 손실은 없다.
+
+> `require("...")` 모듈 경로 완성은 **lua_ls 자체 기능**이다(위 표의 80개).
+> lazydev 가 제공하던 전용 완성 소스는 내장 자동완성으로 넘어오면서 뺐는데,
+> 후보 개수가 그대로인 걸로 확인했다.
 
 ### mason.nvim
 
@@ -347,5 +377,5 @@ markdown-oxide 는 버퍼가 있는 위치에서 위로 올라가며 `.moxide.to
 ### vim.pack 의 한계
 
 내장 문서가 **experimental** 로 명시하고 있다(`:h vim.pack`, pack.txt:211).
-이벤트/파일타입 기반 지연 로딩이 없어서 전부 시작 시 로드된다. 10개 기준 41ms 라 문제 없지만,
+이벤트/파일타입 기반 지연 로딩이 없어서 전부 시작 시 로드된다. 9개 기준 34ms 라 문제 없지만,
 플러그인이 30개를 넘어가면 lazy.nvim 쪽이 유리해진다.

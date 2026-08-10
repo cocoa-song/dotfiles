@@ -21,9 +21,6 @@ vim.pack.add({
   -- 집중 글쓰기
   { src = gh("folke/zen-mode.nvim") },
 
-  -- 자동완성 (v1 계열 고정 — v2 는 파괴적 변경 진행 중)
-  { src = gh("saghen/blink.cmp"), version = vim.version.range("1.*") },
-
   -- Lua 플러그인 개발: vim API 타입 + require() 완성
   { src = gh("folke/lazydev.nvim") },
 
@@ -71,7 +68,8 @@ require("lualine").setup({
 -- extmark 기반이라 편집 중에도 스타일이 유지된다.
 -- (경쟁 플러그인 markview.nvim 은 커서가 닿으면 렌더가 풀려 글 흐름이 끊긴다)
 require("render-markdown").setup({
-  completions = { blink = { enabled = true } },
+  -- 체크박스·콜아웃 완성. in-process LSP 방식이라 내장 자동완성과 그대로 맞물린다.
+  completions = { lsp = { enabled = true } },
   heading = {
     sign = false,
     icons = { "󰲡 ", "󰲣 ", "󰲥 ", "󰲧 ", "󰲩 ", "󰲫 " },
@@ -93,38 +91,6 @@ require("render-markdown").setup({
   quote = { icon = "▍" },
   pipe_table = { preset = "round" },
   link = { wiki = { icon = "󰌷 ", highlight = "RenderMarkdownWikiLink" } },
-})
-
--- ------------------------------------------------------------ 자동완성
-require("blink.cmp").setup({
-  keymap = {
-    preset = "default", -- <C-space> 열기 · <C-y> 확정 · <C-e> 닫기 · <C-n>/<C-p> 이동
-    ["<CR>"] = { "accept", "fallback" },
-    ["<Tab>"] = { "snippet_forward", "fallback" },
-    ["<S-Tab>"] = { "snippet_backward", "fallback" },
-  },
-  appearance = { nerd_font_variant = "mono" },
-  completion = {
-    -- 산문에선 자동 선택이 방해가 된다. Enter 가 줄바꿈으로 남도록 preselect 끔.
-    list = { selection = { preselect = false, auto_insert = true } },
-    documentation = { auto_show = true, auto_show_delay_ms = 250 },
-    menu = { border = "rounded" },
-  },
-  signature = { enabled = true },
-  sources = {
-    default = { "lsp", "path", "snippets", "buffer" },
-    per_filetype = {
-      lua = { "lazydev", "lsp", "path", "snippets", "buffer" },
-    },
-    providers = {
-      lazydev = {
-        name = "LazyDev",
-        module = "lazydev.integrations.blink",
-        score_offset = 100,
-      },
-    },
-  },
-  fuzzy = { implementation = "prefer_rust_with_warning" },
 })
 
 -- --------------------------------------------- Lua 플러그인 개발 지원
