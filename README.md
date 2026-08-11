@@ -20,7 +20,6 @@
 ├── lsp/                        서버별 설정 — vim.lsp.enable 이 자동 로드
 │   ├── lua_ls.lua
 │   ├── markdown_oxide.lua      노트(PKM)
-│   ├── marksman.lua            (비활성 — markdown_oxide 로 대체)
 │   └── harper_ls.lua           (비활성)
 ├── after/ftplugin/markdown.lua 마크다운 = 산문 설정
 └── nvim-pack-lock.json         vim.pack 자동 생성 (git 커밋 권장)
@@ -59,7 +58,7 @@ markdown  markdown_inline  lua  vim  vimdoc  query  c
 
 ### LSP — `lsp/<name>.lua` 규약
 
-`vim.lsp.enable("marksman")` 을 호출하면 Neovim 이 runtimepath 에서 `lsp/marksman.lua` 를
+`vim.lsp.enable("markdown_oxide")` 을 호출하면 Neovim 이 runtimepath 에서 `lsp/markdown_oxide.lua` 를
 찾아 읽는다. 그래서 서버 설정이 `lua/` 가 아니라 최상위 `lsp/` 에 있다.
 
 ### 밖에서 바뀐 파일 다시 읽기
@@ -256,7 +255,7 @@ lewis6991 · [repo](https://github.com/lewis6991/gitsigns.nvim)
 이미 macism·fzf·rg·fd·bat 을 brew 로 쓰고 있어 창구가 하나로 모인다.
 
 ```
-brew install lua-language-server markdown-oxide stylua prettier marksman
+brew install lua-language-server markdown-oxide stylua prettier
 ```
 
 | 도구 | 버전 | 역할 |
@@ -271,12 +270,6 @@ brew install lua-language-server markdown-oxide stylua prettier marksman
 
 > 옛 `~/.local/share/nvim/mason/`(86MB)과 lazy.nvim 시절 `lazy/`(57MB)는 정리했다.
 > nvim 데이터 디렉터리는 이제 플러그인 14MB 뿐이다.
-
-### 비활성: marksman
-
-markdown-oxide 로 대체했다. 바이너리(brew)와 `lsp/marksman.lua` 는 남겨뒀으니
-`lua/config/lsp.lua` 의 `vim.lsp.enable` 에서 `"markdown_oxide"` 를 `"marksman"` 으로
-바꾸면 즉시 원복된다. **둘을 동시에 켜지 말 것** — 같은 버퍼에 붙어 링크 완성 후보가 중복된다.
 
 ### 비활성: harper-ls
 

@@ -10,8 +10,7 @@
 vim.lsp.enable({
   "lua_ls",         -- Lua (Neovim 플러그인 작성)
   "markdown_oxide", -- 마크다운 PKM: [[링크]] 완성 · 백링크 · 데일리 노트 · 태그
-  -- 아래 둘은 비활성. 켜는 법은 각 lsp/*.lua 파일 상단 참고.
-  -- "marksman",    -- markdown_oxide 로 대체됨. 둘 다 켜면 완성 후보가 중복된다
+  -- 비활성. 켜는 법은 lsp/harper_ls.lua 상단 참고.
   -- "harper_ls",   -- 영문 문법/맞춤법 (한국어 미지원)
 })
 
