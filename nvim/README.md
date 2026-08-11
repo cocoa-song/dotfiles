@@ -350,8 +350,14 @@ markdown-oxide 는 버퍼가 있는 위치에서 위로 올라가며 `.moxide.to
 > **`.git` 은 루트 표시에서 일부러 뺐다.** notes/ 가 `~/workspace` 저장소 안에 있어서
 > `.git` 을 두면 워크스페이스 전체 마크다운 716개(production 681 · toolbox 30)가
 > 인덱싱되고, 백링크와 `[[링크]]` 완성 후보에 프로젝트 문서가 전부 섞여 들어온다.
-> 지금은 노트 저장소를 명시한 곳에서만 서버가 뜬다 —
-> `~/workspace/CLAUDE.md` 를 열면 markdown-oxide 가 붙지 않는다(검증함).
+
+> **⚠ `root_markers` 만으로는 부족하다 — `workspace_required = true` 가 같이 있어야 한다.**
+> 마커를 못 찾으면 Neovim 은 서버를 안 띄우는 게 아니라 `root_dir = nil` 인
+> **단일 파일 모드로 그냥 띄운다.** 실측(2026-08-11, nvim 0.12.4): 노트 저장소
+> 밖에 있는 마크다운(다른 저장소의 `CLAUDE.md`)을 열면 `.moxide.toml`·`.obsidian`
+> 탐색이 둘 다 `nil` 인데도 markdown-oxide 가 `root_dir=nil` 로 부착됐다.
+> 플래그를 넣은 뒤 다시 재면 그 파일에서 부착 0건이고, 노트 루트 안에서는 그대로
+> `root_dir=~/workspace/notes` 로 붙는다(양방향 확인).
 
 새 저장소를 만들려면 그 폴더에 빈 `.moxide.toml` 을 두면 끝이다. nvim 설정은 안 건드린다.
 

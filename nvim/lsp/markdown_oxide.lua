@@ -31,6 +31,13 @@ return {
   -- 노트 저장소를 명시한 곳에서만 서버를 띄운다.
   root_markers = { ".moxide.toml", ".obsidian" },
 
+  -- root_markers 만으로는 위 의도가 성립하지 않는다. 마커를 못 찾으면 Neovim 은
+  -- 서버를 안 띄우는 게 아니라 root_dir = nil 인 단일 파일 모드로 그냥 띄운다.
+  -- 실측(2026-08-11): 노트 저장소 밖의 마크다운을 열면 .moxide.toml/.obsidian
+  -- 탐색은 둘 다 nil 인데도 markdown_oxide 가 root_dir=nil 로 부착됐다.
+  -- 이 플래그가 있어야 "노트 저장소에서만 뜬다"가 실제가 된다.
+  workspace_required = true,
+
   on_attach = function(client, bufnr)
     -- :LspToday / :LspTomorrow / :LspYesterday
     for _, cmd in ipairs({ "today", "tomorrow", "yesterday" }) do

@@ -25,7 +25,24 @@ nvim        # vim.pack 이 nvim/nvim-pack-lock.json 대로 플러그인을 설�
 `macism` 은 서드파티 탭이라 brew 가 신뢰 승인을 먼저 요구할 수 있다:
 
 ```bash
+brew tap   laishulu/homebrew
 brew trust laishulu/homebrew
+```
+
+### ⚠ macOS 에서 ghostty 는 설정을 **두 곳에서 읽어 합친다**
+
+`~/.config/ghostty/config` 만 링크해도, 이미 있던
+`~/Library/Application Support/com.mitchellh.ghostty/config` 가 **나중에 로드돼 이긴다.**
+실측(2026-08-11): 링크 직후 `ghostty +show-config` 가
+
+- `font-family` 에 링크본 2개 + 옛 파일 2개, 합쳐서 4개를 쌓고
+- `macos-option-as-alt` 을 링크본의 `left` 가 아니라 옛 파일의 `true` 로 보고
+
+했다. 옛 파일을 치워야 링크한 설정만 적용된다:
+
+```bash
+mv ~/Library/Application\ Support/com.mitchellh.ghostty/config{,.bak}
+ghostty +show-config | grep -E 'font-family =|theme|macos-option'   # 확인
 ```
 
 ## 왜 `~/.config` 자체를 저장소로 두지 않았나
