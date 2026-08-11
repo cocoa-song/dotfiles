@@ -14,7 +14,15 @@ Brewfile    위 설정이 의존하는 외부 도구 전부
 
 ```bash
 git clone git@github.com:hoemoon/dotfiles.git ~/dotfiles
+
+# macism 이 서드파티 탭이라 신뢰 승인이 먼저 필요하다 (없으면 bundle 이 멈춘다)
+brew tap laishulu/homebrew
+brew trust laishulu/homebrew
 brew bundle --file ~/dotfiles/Brewfile
+
+# 기존 설정이 있으면 덮어쓰지 말고 밀어둔다
+mv ~/.config/nvim    ~/.config/nvim.bak-$(date +%Y%m%d)
+mv ~/.config/ghostty ~/.config/ghostty.bak-$(date +%Y%m%d)
 
 ln -s ~/dotfiles/nvim    ~/.config/nvim
 ln -s ~/dotfiles/ghostty ~/.config/ghostty
@@ -22,11 +30,35 @@ ln -s ~/dotfiles/ghostty ~/.config/ghostty
 nvim        # vim.pack 이 nvim/nvim-pack-lock.json 대로 플러그인을 설치한다
 ```
 
-`macism` 은 서드파티 탭이라 brew 가 신뢰 승인을 먼저 요구할 수 있다:
+### ⚠ macOS: Ghostty 는 설정 파일을 **두 곳**에서 읽는다
+
+Ghostty 를 한 번이라도 실행한 Mac 에는 아래 파일이 자동 생성돼 있다.
+
+```
+~/Library/Application Support/com.mitchellh.ghostty/config
+```
+
+이 파일은 `~/.config/ghostty/config` 를 **대체하는 게 아니라 둘 다 로드되고,
+이쪽이 나중에 읽혀 이긴다.** 그래서 심볼릭 링크만 걸면 조용히 무시된 것처럼 보인다
+(실측: 링크를 건 뒤에도 `theme` 은 App Support 쪽 값이었고 `font-family` 는 양쪽이
+합쳐져 4줄이 됐다). 밀어두면 된다:
 
 ```bash
-brew trust laishulu/homebrew
+mv ~/Library/Application\ Support/com.mitchellh.ghostty/config{,.bak-$(date +%Y%m%d)}
 ```
+
+어느 쪽이 이겼는지는 항상 실물로 확인한다 — 설정 파일을 읽지 말고:
+
+```bash
+ghostty +show-config | grep -E '^(font-family =|theme)'
+# 기대: JetBrainsMono Nerd Font Mono / Sarasa Term K / Flexoki Light
+```
+
+### 노트 저장소
+
+`markdown_oxide` 는 `.moxide.toml` 이 있는 곳만 노트 루트로 잡는다(경로는 nvim 설정에
+박혀 있지 않다). 새 기기에서 노트를 쓰려면 그 폴더에 `.moxide.toml` 을 둔다 —
+자세한 건 [nvim/README.md](nvim/README.md) 5절.
 
 ## 왜 `~/.config` 자체를 저장소로 두지 않았나
 

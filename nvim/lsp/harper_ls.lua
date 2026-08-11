@@ -2,7 +2,7 @@
 --
 -- 기본 비활성 — 한국어를 지원하지 않아 한글 문서에서는 진단이 시끄럽다.
 -- 영문 문서를 쓸 때만 켜는 걸 권함:
---   1) :MasonInstall harper-ls
+--   1) brew install harper   (mason.nvim 을 쓰지 않는다 — 외부 도구는 전부 brew)
 --   2) lua/config/lsp.lua 의 vim.lsp.enable 목록에서 "harper_ls" 주석 해제
 --   또는 그때그때 :lua vim.lsp.enable("harper_ls")
 return {
