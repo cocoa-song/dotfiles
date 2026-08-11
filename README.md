@@ -5,10 +5,12 @@
 ```
 nvim/       마크다운 워크벤치 (Neovim 0.12) — 자세한 건 nvim/README.md
 ghostty/    터미널
+zsh/        셸 — 자세한 건 아래 "zsh"
 Brewfile    위 설정이 의존하는 외부 도구 전부
 ```
 
-`~/.config/nvim` 과 `~/.config/ghostty` 는 이 저장소를 가리키는 심볼릭 링크다.
+`~/.config/nvim`, `~/.config/ghostty`, 그리고 `~/.zshrc`·`~/.zprofile`·
+`~/.zsh_plugins.txt` 는 이 저장소를 가리키는 심볼릭 링크다.
 
 ## 새 기기에 세팅
 
@@ -53,6 +55,38 @@ mv ~/Library/Application\ Support/com.mitchellh.ghostty/config{,.bak-$(date +%Y%
 ghostty +show-config | grep -E '^(font-family =|theme)'
 # 기대: JetBrainsMono Nerd Font Mono / Sarasa Term K / Flexoki Light
 ```
+
+### zsh
+
+```bash
+mv ~/.zshrc ~/.zshrc.bak-$(date +%Y%m%d)   # 기존 설정이 있으면
+ln -s ~/dotfiles/zsh/zshrc           ~/.zshrc
+ln -s ~/dotfiles/zsh/zprofile        ~/.zprofile
+ln -s ~/dotfiles/zsh/zsh_plugins.txt ~/.zsh_plugins.txt
+```
+
+플러그인은 antidote 가 첫 셸 실행 때 `~/.zsh/plugins` 로 클론한다(목록만 추적,
+실체는 추적하지 않는다). `ANTIDOTE_HOME` 을 기본값 `~/Library/Caches` 에서
+옮겨둔 이유는 **OS 캐시 정리가 플러그인만 지우고 정적 번들
+`~/.zsh_plugins.zsh` 는 남기기 때문**이다 — 그러면 모든 셸이 없는 경로를
+source 하며 에러를 뱉는데, `.txt` 가 더 새것이 아니라서 antidote 가 스스로
+복구하지도 않는다.
+
+**`~/.zshenv` 는 여기 없다 (의도적).** App Store Connect 키 ID·개인키 경로처럼
+기기에 묶인 값이 들어가고 이 저장소는 공개다 — 아래 "왜 `~/.config` 자체를
+저장소로 두지 않았나" 와 같은 이유다. 새 기기에서는 손으로 만든다:
+
+```zsh
+# ~/.zshenv — 모든 zsh 가 읽는다. 출력·무거운 작업 금지.
+typeset -U path PATH
+path=($HOME/.local/bin $path)
+export ARCHIVE_DIR="$HOME/Library/Mobile Documents/iCloud~md~obsidian/Documents"
+export ASC_KEY_ID=... ASC_KEY_PATH=...
+[[ -n $ASC_ISSUER_ID ]] || export ASC_ISSUER_ID="$(security find-generic-password -s ASC_ISSUER_ID -w 2>/dev/null)"
+```
+
+`.zshrc` 가 아니라 `.zshenv` 인 이유: `.zshrc` 는 **대화형 셸에서만** 읽혀서
+`zsh -c "ship ..."` 같은 비대화형 호출에는 이 값들이 통째로 비어 있다.
 
 ### 노트 저장소
 

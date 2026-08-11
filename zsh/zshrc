@@ -1,0 +1,60 @@
+# ~/.zshrc — 대화형 셸 전용. 환경변수는 .zshenv, 로그인 1회성은 .zprofile.
+
+# ── 플러그인 (antidote) ──────────────────────────────────────────────
+# ANTIDOTE_HOME 기본값은 ~/Library/Caches — OS 캐시 정리에 날아가면
+# 정적 번들만 남아 깨진 경로를 source 하므로 캐시 밖에 둔다.
+export ANTIDOTE_HOME=$HOME/.zsh/plugins
+source /opt/homebrew/opt/antidote/share/antidote/antidote.zsh
+antidote load
+
+# ── completion ──────────────────────────────────────────────────────
+fpath=(~/.zsh/completions $fpath)
+
+# compinit 전체 검사는 ~27ms 로 기동 최대 비용이다. 덤프가 24시간 넘게
+# 묵었을 때만 전체 재생성하고, 평소엔 -C 로 검사를 건너뛴다.
+# 새 completion 이 즉시 안 잡히면 `rm ~/.zcompdump && compinit`.
+autoload -Uz compinit
+if [[ -n ~/.zcompdump(#qN.mh+24) ]]; then
+  compinit
+else
+  compinit -C
+fi
+
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}'   # 대소문자 무시
+zstyle ':completion:*' menu select                           # 화살표로 선택
+zstyle ':completion:*' use-cache on
+zstyle ':completion:*' cache-path ~/.cache/zsh/zcompcache
+
+# ── history ─────────────────────────────────────────────────────────
+# /etc/zshrc 기본값(2000/1000)은 SAVEHIST < HISTSIZE 라 종료 시 절반이 버려진다.
+HISTSIZE=100000
+SAVEHIST=100000
+setopt SHARE_HISTORY EXTENDED_HISTORY HIST_IGNORE_ALL_DUPS \
+       HIST_IGNORE_SPACE HIST_REDUCE_BLANKS HIST_VERIFY
+
+# ── 셸 동작 ─────────────────────────────────────────────────────────
+# /etc/zshrc 가 setopt BEEP 을 켜므로 NO_BEEP 은 명시적으로 꺼야 한다.
+setopt AUTO_CD EXTENDED_GLOB INTERACTIVE_COMMENTS NO_BEEP
+
+# ── alias ───────────────────────────────────────────────────────────
+alias vim="nvim"
+alias vi="nvim"
+alias tailscale="/Applications/Tailscale.app/Contents/MacOS/Tailscale"
+
+# brew 전용. gh 호출이 ~30ms 라 대화형에만 둔다.
+export HOMEBREW_GITHUB_API_TOKEN="$(gh auth token 2>/dev/null)"
+
+# ── prompt / fzf ────────────────────────────────────────────────────
+eval "$(starship init zsh)"
+# ZLE 가 실제로 켜진 셸에서만 — tty 없는 `zsh -i -c` 에서 fzf 가
+# "can't change option: zle" 를 뱉는 걸 막는다.
+[[ -o zle ]] && source <(fzf --zsh)   # Ctrl-R 퍼지 히스토리 · Ctrl-T · Alt-C
+
+# ── 키 바인딩 ───────────────────────────────────────────────────────
+# 위/아래 = 입력한 접두어로 히스토리 검색 (zsh 내장 위젯).
+# 문장 중간 매칭은 fzf 의 Ctrl-R 이 담당하므로 별도 플러그인을 쓰지 않는다.
+autoload -Uz up-line-or-beginning-search down-line-or-beginning-search
+zle -N up-line-or-beginning-search
+zle -N down-line-or-beginning-search
+bindkey '^[[A' up-line-or-beginning-search
+bindkey '^[[B' down-line-or-beginning-search

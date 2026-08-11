@@ -1,0 +1,11 @@
+# ~/.zprofile — 로그인 셸에서 1회.
+
+# Added by OrbStack: command-line tools and integration
+# This won't be added again if you remove it.
+source ~/.orbstack/shell/init.zsh 2>/dev/null || :
+
+eval "$(brew shellenv)"
+
+# brew shellenv 가 PATH 맨 앞에 끼어들므로 ~/.local/bin 우선순위를 되돌린다.
+# typeset -U(.zshenv) 덕에 추가가 아니라 이동만 일어난다.
+path=($HOME/.local/bin $path)
