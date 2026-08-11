@@ -283,6 +283,43 @@ brew install harper                   -- 셸에서
 ```
 상시로 쓰려면 `lua/config/lsp.lua` 의 `vim.lsp.enable` 목록에서 주석을 푼다.
 
+### Swift / Objective-C — sourcekit-lsp
+
+brew 가 아니라 **Xcode 툴체인**에서 온다(`xcrun sourcekit-lsp`). 그래서 Brewfile 에 없고,
+Xcode·Swift 툴체인이 없는 기기에서는 알림 없이 조용히 비활성된다.
+
+> **⚠ 프로젝트 루트는 체크아웃 루트가 아니다 — 모노레포에서 갈린다.**
+> sourcekit-lsp 는 `buildServer.json`(Xcode) 또는 `Package.swift`(SwiftPM) 가 있는
+> 디렉터리를 루트로 잡아야 한다. 저장소 루트로 고정하면 **패키지를 여러 개 담은
+> 저장소에서 전부 깨진다** — git 루트엔 둘 다 없으니 모든 Swift 파일이 fallback
+> 컴파일 인자로 돌아 import 가 깨진다(실측 2026-08-11: 한 저장소 안 SwiftPM 패키지
+> 8개가 전부 git 루트로 붙어 경고만 떴다).
+>
+> 그래서 `lsp/sourcekit.lua` 는 **파일에서 위로 올라가며 찾되 체크아웃 루트에서 멈춘다.**
+> 위로 무한정 올라가면 워크트리를 체크아웃 안쪽에 두는 배치에서 부모의
+> `buildServer.json` 을 잡는 함정이 있어서, 경계는 그대로 두고 안쪽만 탐색한다.
+> 아직 설정 전인 Xcode 프로젝트는 `.xcworkspace`/`.xcodeproj` 가 있는 디렉터리를
+> 잡아, 경고가 `xcode-build-server config` 를 실제로 돌려야 할 곳을 가리킨다.
+
+Xcode 프로젝트는 BSP 설정을 한 번 해줘야 import 가 산다 (SwiftPM 은 불필요):
+
+```bash
+brew install xcode-build-server
+cd <프로젝트 루트>          # .xcworkspace 가 있는 곳 = 경고가 가리키는 곳
+xcode-build-server config -workspace <이름>.xcworkspace -scheme <스킴>
+```
+
+### `.stylua.toml` 은 지우면 안 된다
+
+**stylua 의 기본 들여쓰기는 탭**인데 이 설정의 Lua 는 전부 2칸 스페이스다.
+conform 이 Lua 를 저장 시 자동 포맷하므로, 이 파일이 없으면 아무 `.lua` 나 `:w`
+하는 순간 전체가 탭으로 재작성된다(실측: 설정 내 `.lua` 12개 전부 해당).
+
+위치가 `nvim/` **안**인 게 중요하다 — stylua 는 포맷할 파일 경로에서 위로 올라가며
+찾는데, `~/.config/nvim` 이 이 디렉터리를 가리키는 심볼릭 링크라 여기 둬야
+`~/dotfiles/nvim/...` 로 열든 `~/.config/nvim/...` 로 열든 양쪽에서 잡힌다.
+저장소 루트에 두면 심볼릭 링크 경로에서 안 잡힌다.
+
 ---
 
 ## 4. 시스템 의존성

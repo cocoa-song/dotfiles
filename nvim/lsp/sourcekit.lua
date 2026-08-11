@@ -26,7 +26,7 @@ local toplevels = {}
 -- **안쪽**에 두는 배치(예: `<repo>/.worktrees/<name>`)에서 위로 걸어 올라가다
 -- 부모 체크아웃의 buildServer.json 을 잡아버린다. 그러면 LSP 가 조용히 엉뚱한
 -- 트리에 붙어서, 워크트리 파일을 편집하는데 정의는 다른 체크아웃으로 점프한다.
--- buildServer.json 은 언제나 체크아웃 루트에 있으므로 경계를 먼저 구한다.
+-- 체크아웃 루트는 "여기서 멈춘다"는 **경계**다. 프로젝트 루트가 아니다(아래 project_root).
 local function git_toplevel(path)
   local dir = vim.fs.dirname(path)
   if toplevels[dir] ~= nil then
@@ -36,6 +36,52 @@ local function git_toplevel(path)
   local top = (r.code == 0) and vim.trim(r.stdout) or false
   toplevels[dir] = top
   return top or nil
+end
+
+-- 프로젝트 루트를 파일에서 위로 올라가며 찾되, 체크아웃 루트에서 멈춘다.
+--
+-- ★ "체크아웃 루트 = 프로젝트 루트" 로 두면 **모노레포에서 전부 깨진다.**
+--   저장소 하나에 패키지를 여러 개 담는 배치(`<repo>/production/<앱>/Package.swift`)
+--   에서는 git 루트에 Package.swift 도 buildServer.json 도 없다. 그래서 모든 Swift
+--   파일이 "설정 안 됨" 으로 떨어져 fallback 인자로 돌고, import 가 깨진 채 경고만 뜬다.
+--   (실측 2026-08-11: 한 저장소 안의 SwiftPM 패키지 8개가 전부 git 루트로 붙었다.)
+--
+--   그렇다고 `vim.fs.root` 로 무한정 올라가면 위 git_toplevel 주석의 워크트리 함정에
+--   걸린다. 그래서 **아래로는 찾되 위로는 경계에서 멈춘다** — 둘 다 만족한다.
+local function project_root(path, top)
+  local function has(dir, file)
+    return vim.fn.filereadable(dir .. "/" .. file) == 1
+  end
+  local function has_glob(dir, pat)
+    return #vim.fn.glob(dir .. "/" .. pat, true, true) > 0
+  end
+
+  local dir = vim.fs.dirname(path)
+  local xcode -- .xcworkspace/.xcodeproj 를 본 가장 가까운 디렉터리 (fallback)
+
+  while dir do
+    -- 빌드 정보가 실제로 있는 곳. 가장 가까운 것이 이긴다.
+    if has(dir, "buildServer.json") or has(dir, "Package.swift") then
+      return dir, true
+    end
+    -- 아직 설정 전인 Xcode 프로젝트. buildServer.json 이 놓일 자리가 여기다.
+    if not xcode and (has_glob(dir, "*.xcworkspace") or has_glob(dir, "*.xcodeproj")) then
+      xcode = dir
+    end
+
+    if dir == top then
+      break -- 경계. 체크아웃 밖으로는 절대 안 나간다.
+    end
+    local parent = vim.fs.dirname(dir)
+    if parent == dir then
+      break
+    end
+    dir = parent
+  end
+
+  -- 설정 전 Xcode 프로젝트면 그 디렉터리를 준다 — 경고가 `xcode-build-server config` 를
+  -- 실제로 돌려야 할 곳을 가리키게 된다(모노레포에서는 git 루트가 아니다).
+  return xcode or top, false
 end
 
 ---@type vim.lsp.Config
@@ -58,26 +104,33 @@ return {
       return
     end
 
-    if vim.fn.filereadable(top .. "/buildServer.json") == 1 or vim.fn.filereadable(top .. "/Package.swift") == 1 then
-      return on_dir(top)
+    local root, configured = project_root(name, top)
+    if configured then
+      return on_dir(root)
     end
 
     -- BSP 도 SwiftPM 도 없으면 fallback 인자로 돌아 import 가 전부 깨진다.
     -- 조용히 반쯤 동작하게 두지 말고 한 번은 알린다.
-    if not warned[top] then
-      warned[top] = true
+    if not warned[root] then
+      warned[root] = true
       vim.notify(
-        ("sourcekit: no buildServer.json in %s — run `xcode-build-server config`"):format(top),
+        ("sourcekit: no buildServer.json in %s — run `xcode-build-server config`"):format(root),
         vim.log.levels.WARN
       )
     end
-    return on_dir(top)
+    return on_dir(root)
   end,
 
   -- cmd_cwd 의 기본값은 root_dir 이 아니라 Neovim 의 cwd 다
   -- (:h vim.lsp.ClientConfig). xcode-build-server 는 "에디터가 연 경로" 로
-  -- 컴파일 플래그 캐시를 키잉하므로 체크아웃 루트로 고정해야 캐시가 맞는다.
-  cmd_cwd = git_toplevel(vim.uv.cwd() .. "/.") or vim.uv.cwd(),
+  -- 컴파일 플래그 캐시를 키잉하므로 프로젝트 루트로 고정해야 캐시가 맞는다.
+  -- root_dir 과 같은 규칙을 쓴다 — 체크아웃 루트로 두면 모노레포에서 buildServer.json
+  -- 이 있는 디렉터리와 어긋난다.
+  cmd_cwd = (function()
+    local cwd = vim.uv.cwd()
+    local top = git_toplevel(cwd .. "/.")
+    return top and (project_root(cwd .. "/.", top)) or cwd
+  end)(),
 
   -- 기본 get_language_id 는 Neovim 의 filetype 을 그대로 넘긴다. sourcekit-lsp 는
   -- LSP 표준 id 를 원한다.

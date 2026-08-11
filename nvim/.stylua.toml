@@ -1,0 +1,12 @@
+# stylua 기본값은 **탭**이다. 이 설정의 Lua 는 전부 2칸 스페이스로 쓰여 있고,
+# conform 이 Lua 를 저장 시 자동 포맷한다(format_on_save) — 그래서 이 파일이 없으면
+# 아무 .lua 나 :w 하는 순간 전체가 탭으로 재작성돼 12개 파일이 통째로 diff 로 뜬다.
+# (실측 2026-08-11: 설정 내 .lua 12개 전부 기본값과 불일치.)
+#
+# ★ 위치가 nvim/ 안인 이유: stylua 는 **포맷할 파일의 경로**에서 위로 올라가며 찾는다.
+#   ~/.config/nvim 은 이 디렉터리를 가리키는 심볼릭 링크라, 여기 두면
+#   ~/dotfiles/nvim/... 로 열든 ~/.config/nvim/... 로 열든 양쪽에서 잡힌다.
+#   저장소 루트(~/dotfiles/.stylua.toml)에 두면 심볼릭 링크 경로에서 안 잡힌다.
+indent_type = "Spaces"
+indent_width = 2
+column_width = 120
