@@ -345,7 +345,7 @@ markdown-oxide 는 버퍼가 있는 위치에서 위로 올라가며 `.moxide.to
 | 저장소 | 루트 표시 | 성격 |
 |---|---|---|
 | `~/workspace/notes` | `.moxide.toml` | 직접 쓰는 노트. workspace 저장소가 함께 관리 |
-| iCloud Obsidian 볼트 | `.obsidian` | oracle 캡처 아카이브 (읽기·검색용) |
+| Obsidian 볼트 | `.obsidian` | 읽기·검색용 아카이브 (직접 쓰지 않는다) |
 
 > **`.git` 은 루트 표시에서 일부러 뺐다.** notes/ 가 `~/workspace` 저장소 안에 있어서
 > `.git` 을 두면 워크스페이스 전체 마크다운 716개(production 681 · toolbox 30)가
