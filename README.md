@@ -1,435 +1,51 @@
-# 마크다운 워크벤치 (Neovim 0.12)
+# dotfiles
 
-마크다운 글쓰기 + Lua(Neovim 플러그인) 개발용 설정.
-2026-08-08 기준으로 생태계를 재평가해 처음부터 다시 구성.
-
-- **Neovim**: 0.12.4 (Homebrew)
-- **플러그인**: 9개 — 내장 `vim.pack` 으로 관리
-- **시작 시간**: 약 31ms (지연 로딩 없이 전부 즉시 로드)
+기기 간에 공유하는 개인 설정.
 
 ```
-~/.config/nvim/
-├── init.lua                    진입점 — 순서대로 require
-├── lua/config/
-│   ├── options.lua             전역 옵션 · treesitter · 자동명령
-│   ├── plugins.lua             vim.pack.add + 각 플러그인 setup
-│   ├── completion.lua          자동완성 (0.12 내장)
-│   ├── lsp.lua                 vim.lsp.enable · LspAttach 키맵 · 진단
-│   ├── keymaps.lua             전역 키맵
-│   └── ime.lua                 한영 자동전환 (macOS)
-├── lsp/                        서버별 설정 — vim.lsp.enable 이 자동 로드
-│   ├── lua_ls.lua
-│   ├── markdown_oxide.lua      노트(PKM)
-│   └── harper_ls.lua           (비활성)
-├── after/ftplugin/markdown.lua 마크다운 = 산문 설정
-└── nvim-pack-lock.json         vim.pack 자동 생성 (git 커밋 권장)
+nvim/       마크다운 워크벤치 (Neovim 0.12) — 자세한 건 nvim/README.md
+ghostty/    터미널
+Brewfile    위 설정이 의존하는 외부 도구 전부
 ```
 
----
+`~/.config/nvim` 과 `~/.config/ghostty` 는 이 저장소를 가리키는 심볼릭 링크다.
 
-## 1. 플러그인 없이 해결한 것 — Neovim 0.12 내장
+## 새 기기에 세팅
 
-이 설정의 핵심 판단. **2025년에 플러그인이 필요했던 4가지가 이제 코어에 있다.**
+```bash
+git clone git@github.com:hoemoon/dotfiles.git ~/dotfiles
+brew bundle --file ~/dotfiles/Brewfile
 
-| 기능 | 내장 API | 뺀 플러그인 |
+ln -s ~/dotfiles/nvim    ~/.config/nvim
+ln -s ~/dotfiles/ghostty ~/.config/ghostty
+
+nvim        # vim.pack 이 nvim/nvim-pack-lock.json 대로 플러그인을 설치한다
+```
+
+`macism` 은 서드파티 탭이라 brew 가 신뢰 승인을 먼저 요구할 수 있다:
+
+```bash
+brew trust laishulu/homebrew
+```
+
+## 왜 `~/.config` 자체를 저장소로 두지 않았나
+
+`~/.config` 에는 `gh/`, `github-copilot/`, `configstore/` 같은 남의 도구
+디렉터리가 15개 넘게 있다. 지금은 자격증명이 안 보여도 **어떤 도구가 언제
+토큰을 떨굴지 통제할 수 없다.** whitelist `.gitignore` 로 막아도 `git add -f`
+한 번이면 유출이다. 저장소를 `~/.config` 밖에 두면 그 위험이 구조적으로 사라진다.
+
+## 테마는 두 곳을 같이 바꾼다
+
+터미널과 에디터가 **같은 Flexoki 팔레트**를 쓴다. 배경 `#fffcf0` / 전경 `#100f0f`
+가 정확히 일치해서 창 경계가 드러나지 않는다. 어두운 쪽으로 갈 땐 둘 다 바꾼다.
+
+| | 밝게 | 어둡게 |
 |---|---|---|
-| 플러그인 관리 | `vim.pack` | lazy.nvim |
-| 구문 하이라이팅 | `vim.treesitter.start()` | nvim-treesitter (+ 파서 빌드 체계 전체) |
-| LSP 클라이언트 설정 | `vim.lsp.config` / `vim.lsp.enable` | nvim-lspconfig, mason-lspconfig |
-| 스니펫 확장 | `vim.snippet` | LuaSnip, friendly-snippets, cmp_luasnip |
-| LSP 바이너리 설치 | (brew) | mason.nvim, mason-lspconfig |
-| Lua 라이브러리 주입 | `workspace.library` 직접 지정 | lazydev.nvim (메모리 205MB 더 씀) |
-| **자동완성** | `'autocomplete'` + `'complete'` + `vim.lsp.completion` | **blink.cmp** (그 전엔 nvim-cmp + 소스 6개) |
+| `ghostty/config` | `theme = Flexoki Light` | `theme = Flexoki Dark` |
+| `nvim/lua/config/plugins.lua` | `flexoki-light` + `background = "light"` | `flexoki-moon` + `"dark"` |
 
-### treesitter — 파서가 동봉돼 있다
+## 이력
 
-nvim 0.12 는 아래 파서를 바이너리에 포함해 배포한다:
-
-```
-markdown  markdown_inline  lua  vim  vimdoc  query  c
-→ /opt/homebrew/Cellar/neovim/0.12.4/lib/nvim/parser/*.so
-```
-
-마크다운 + Lua 용도에 필요한 파서가 정확히 다 들어있어서 `nvim-treesitter` 가 전혀 필요 없다.
-`lua/config/options.lua` 의 `FileType` 자동명령이 `vim.treesitter.start()` 를 호출하는 게 전부다.
-
-> 부수 효과: nvim-treesitter 는 2026년 3월 `master`→`main` 전면 재작성을 했고
-> 새 버전은 tree-sitter CLI 로 파서를 로컬 컴파일한다. 그 마이그레이션을 통째로 건너뛴다.
-
-### LSP — `lsp/<name>.lua` 규약
-
-`vim.lsp.enable("markdown_oxide")` 을 호출하면 Neovim 이 runtimepath 에서 `lsp/markdown_oxide.lua` 를
-찾아 읽는다. 그래서 서버 설정이 `lua/` 가 아니라 최상위 `lsp/` 에 있다.
-
-### 밖에서 바뀐 파일 다시 읽기
-
-`lua/config/options.lua`. **Claude Code·다른 터미널·git checkout 이 파일을 고쳐도
-nvim 화면은 옛 내용 그대로고, 그 상태로 저장하면 남의 변경을 덮어쓴다.**
-
-`'autoread'` 는 켜져 있어도 부족하다 — 그건 "감지하면 다시 읽어라"는 정책일 뿐,
-**언제 확인할지**는 별개다. nvim 은 파일을 감시하지 않고 특정 시점에만 검사하는데
-터미널에선 그 시점이 거의 오지 않는다.
-
-```lua
-vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter", "CursorHold", ... }, {
-  callback = function()
-    vim.schedule(function() vim.cmd.checktime() end)   -- ★ schedule 필수
-  end,
-})
-```
-
-> **`vim.schedule` 이 핵심이다.** `:checktime` 은 자동명령 실행 중이면 검사를
-> 연기한다(버퍼를 중간에 갈아끼우지 않으려고). 자동명령 밖으로 빼야 즉시 반영된다.
-> 이걸 빼먹으면 콜백은 실행되는데 파일은 안 바뀌는, 원인 찾기 어려운 증상이 된다.
-
-`updatetime` 이 250ms 라 커서를 잠깐 멈추면 반영된다. 다시 읽으면 알림이 뜬다.
-
-> 더 나아가려면 `coder/claudecode.nvim`(3.0k★)이 있다 — VS Code 확장과 같은
-> WebSocket MCP 를 nvim 에 구현해서, Claude 가 파일을 몰래 쓰는 대신 **nvim diff 창에
-> 변경을 제안**하고 `:w` 수락 / `:q` 거부하는 방식이다. 다만 nvim 안에서 Claude 를
-> 띄우는 워크플로로 옮겨갈 때 값어치가 나온다(+snacks.nvim 의존).
-
-### 자동완성 — `'autocomplete'` 는 0.12 신규
-
-설정은 `lua/config/completion.lua`.
-
-```lua
-vim.o.autocomplete = true
-vim.o.autocompletedelay = 80
-vim.o.completeopt = "menuone,noselect,popup,fuzzy"
-vim.o.complete = ".^5,w^5,b^5"        -- LspAttach 에서 ",o"(LSP) 를 더한다
-```
-
-**여러 소스를 한 팝업에 병합하는 건 `'complete'` 가 한다** — `.`(현재 버퍼)
-`w`(다른 창) `b`(로드된 버퍼) `o`(omnifunc=LSP) `F{func}`(임의 함수, 여러 개 가능).
-소스 뒤 `^N` 은 그 소스의 후보 개수 상한.
-
-내부는 **감쇠 타임슬라이스**다 — 앞선 소스에 시간을 더 주고 느린 소스는 빠르게
-강등하되 전부 실행한다. `'complete'` 에 `F`/`o` 가 있으면 LSP 를 위해 타임아웃을
-~1s 로 늘린다(`'autocompletetimeout'`, 기본 80ms). `:h ins-autocompletion`
-
-LSP 연결은 `lua/config/lsp.lua` 의 `LspAttach` 에서:
-
-```lua
-vim.lsp.completion.enable(true, client.id, ev.buf, { autotrigger = true })
-vim.bo[ev.buf].complete = ".^5,w^5,b^5,o"
-```
-
-**산문 대응** — `noselect` 라 아무것도 미리 선택되지 않는다. 그래서 `<CR>` 은 그냥
-줄바꿈이고, 의식적으로 `<C-n>` 으로 고른 뒤에만 확정된다. 한글로 글 쓰다 Enter 칠 때마다
-엉뚱한 단어가 들어가는 사고를 막는 핵심 설정이다.
-
-| 키 | 동작 |
-|---|---|
-| (타이핑) | 80ms 뒤 자동으로 팝업 |
-| `<C-n>` / `<C-p>` · `<Tab>` / `<S-Tab>` | 후보 이동 (팝업 없으면 원래 Tab) |
-| `<CR>` | 골랐으면 확정, 아니면 **줄바꿈** |
-| `<C-y>` / `<C-e>` | 확정 / 닫기 |
-| `<C-l>` / `<C-h>` | 스니펫 다음 · 이전 자리 (`vim.snippet`) |
-| `<C-x><C-f>` | 파일 경로 완성 (내장 ins-completion) |
-
----
-
-## 2. 플러그인 9개
-
-### ★ render-markdown.nvim — 이 설정의 핵심
-
-`2.3M` · MeanderingProgrammer · [repo](https://github.com/MeanderingProgrammer/render-markdown.nvim)
-
-버퍼 안에서 마크다운을 **편집 가능한 상태 그대로** 스타일링한다.
-헤딩 배경, 불릿 아이콘, 체크박스, 인용 막대, 표 정렬, 코드블록 배경.
-
-**왜 markview.nvim 이 아닌가**: markview 는 커서가 닿은 구역의 렌더를 풀어 원문을 보여준다.
-글 쓰는 동안 계속 깜빡여서 흐름이 끊긴다. render-markdown 은 extmark 기반이라 편집 중에도
-스타일이 유지되고, 화면에 보이는 영역만 렌더해서 가볍다.
-
-- 설정: `lua/config/plugins.lua`
-- 토글: `<leader>tr` (원문 마크업 보기)
-- `conceallevel` 을 3으로 올려 `**`, `#` 같은 기호를 숨긴다
-
-### conform.nvim
-
-`2.6M` · stevearc · [repo](https://github.com/stevearc/conform.nvim)
-
-포매터 실행기.
-
-- **Lua**: 저장 시 자동 포맷 (stylua)
-- **마크다운**: 수동만 — `<leader>cf`
-
-마크다운을 자동 포맷에서 뺀 이유 — **한글 때문이 아니다**(실측으로 확인함):
-prettier 는 표를 글자 폭 기준으로 정확히 정렬하고(`:---:` 지시자도 존중),
-`proseWrap=preserve` 라 문단을 재배치하지 않는다.
-
-실제 이유는 **정규화**다. 저장할 때마다 리스트 마커(`*`/`-`)·중첩 들여쓰기(4→2칸)·
-`1)`→`1.` 을 바꾸므로, 남이 쓴 문서나 캡처된 노트를 열었다 저장만 해도 diff 가 생긴다.
-자동이 편하면 `plugins.lua` 의 `format_on_save` 에서 filetype 조건을 지우면 된다.
-
-### fzf-lua
-
-ibhagwan · [repo](https://github.com/ibhagwan/fzf-lua)
-
-파일·내용 검색. **telescope.nvim + plenary.nvim(2개, 5.6MB)를 이걸로 교체했다.**
-목록을 Lua 가 들고 있지 않고 `fzf` 프로세스가 처리하므로 파일이 많아도 즉시 뜨고,
-미리보기는 `bat` 이 문법 강조까지 해준다.
-
-외부 의존: `fzf`(brew) · `fd` · `rg` · `bat`
-
-| 키 | 동작 |
-|---|---|
-| `<leader>ff` | 파일 찾기 (fd) |
-| `<leader>fg` | 내용 검색 (ripgrep) |
-| `<leader>fb` `<leader>fr` | 버퍼 · 최근 파일 |
-| `<leader>fs` `<leader>fh` | 커서 아래 단어 검색 · 도움말 |
-| `<leader>fd` `<leader>fk` | 진단 목록 · 키맵 찾기 |
-| `<leader>fz` | **직전 검색 이어서** (resume) |
-| `<leader>/` | **현재 문서 안에서** 찾기 (긴 노트용) |
-| `<leader>nf` `<leader>ng` | 노트 폴더 파일 찾기 · 내용 검색 |
-
-창 안에서: `<C-j>`/`<C-k>` 이동 · `<C-u>`/`<C-d>` 미리보기 스크롤 ·
-`<C-q>` 전체를 quickfix 로 · `<C-x>`/`<C-v>`/`<C-t>` 분할·탭으로 열기
-
-### flexoki (kepano) / lualine.nvim / nvim-web-devicons
-
-외형. **터미널과 같은 테마를 쓴다** — `~/.config/ghostty/config` 의
-`theme = Flexoki Light` 와 팔레트가 같아서 배경이 이어진다.
-
-| | Ghostty | nvim |
-|---|---|---|
-| 배경 | `#fffcf0` | `#fffcf0` ✅ |
-| 전경 | `#100f0f` | `#100f0f` ✅ |
-
-어두운 쪽으로 갈 땐 **양쪽을 같이** 바꾼다 — Ghostty 를 `Flexoki Dark` 로,
-`plugins.lua` 를 `flexoki-moon` + `background = "dark"` 로.
-
-lualine 은 마크다운 버퍼에서 **단어 수**를 표시한다 (한글 포함).
-
-### nvim-surround
-
-kylechui · [repo](https://github.com/kylechui/nvim-surround)
-
-텍스트 감싸기. **마크다운 산문에서 가장 자주 하는 동작**이고 0.12 에 대체재가 없다.
-
-마크다운 버퍼에서만 `b`/`i`/`c`/`l` 대상을 더한다(`after/ftplugin/markdown.lua`) —
-전역에 넣으면 Lua 편집에서 기본 대상 `b`=`()` 를 덮어쓴다.
-
-| 키 | 결과 |
-|---|---|
-| `ysiwb` · (비주얼)`Sb` | `**굵게**` |
-| `ysiwi` · `Si` | `*기울임*` |
-| `ysiwc` · `Sc` | `` `코드` `` |
-| `ysiwl` · `Sl` | `[링크]()` |
-| `dsb` / `csbi` | 제거 / 굵게→기울임 |
-
-`ysiw*` 를 두 번 쳐도 `**굵게**` 가 안 되기 때문에(두 번째가 붙은 `*` 를 단어로 잡는다)
-전용 대상이 필요했다. `b` 는 기본 별칭이 `()` 라 `aliases = { b = false }` 로 통과시켰다.
-
-### gitsigns.nvim
-
-lewis6991 · [repo](https://github.com/lewis6991/gitsigns.nvim)
-
-여백 변경 표시 + hunk 조작. git 플러그인 중 채택률 1위(dotfyle 설정 1,764개로 2위의 2배).
-
-**커밋·로그·브랜치는 넣지 않았다** — fugitive·neogit·lazygit 은 Claude Code 로 커밋하는
-워크플로와 정면으로 겹친다. 목록 조회가 필요하면 fzf-lua 의 git 픽커가 이미 있다.
-
-| 키 | 동작 |
-|---|---|
-| `]c` / `[c` | 다음 · 이전 변경 |
-| `<leader>hp` `<leader>hs` `<leader>hr` | 미리보기 · stage · 되돌리기 |
-| `<leader>hb` `<leader>ht` | 이 줄 blame · 상시표시 토글 |
-
-산문에선 문단을 고치면 온 줄이 표시돼 시끄러우므로 상시 blame 은 꺼뒀다.
-
-### zen-mode.nvim
-
-`392K` · folke · [repo](https://github.com/folke/zen-mode.nvim)
-
-`<leader>z` — 본문을 88칸 폭으로 화면 중앙에 놓고 UI 를 숨긴다. 긴 글 쓸 때.
-
----
-
-## 3. 외부 도구 — 전부 brew
-
-**mason.nvim 을 제거하고 brew 로 일원화했다.** 쓰는 도구 5개가 모두 brew 에 있어서
-`:MasonInstall` 대신 `brew install`, 갱신은 `brew upgrade` 한 번으로 끝난다.
-이미 macism·fzf·rg·fd·bat 을 brew 로 쓰고 있어 창구가 하나로 모인다.
-
-```
-brew install lua-language-server markdown-oxide stylua prettier
-```
-
-| 도구 | 버전 | 역할 |
-|---|---|---|
-| **markdown-oxide** | 0.25.12 | 마크다운 PKM LSP — `[[위키링크]]` 완성, **백링크**, 데일리 노트, 태그. 5절 참고 |
-| **lua-language-server** | 3.19.0 | Lua LSP |
-| **stylua** | 2.5.2 | Lua 포매터 — 저장 시 자동 |
-| **prettier** | 3.9.6 | 마크다운 포매터 — `<leader>cf` 수동 |
-
-`lsp/*.lua` 의 `cmd` 는 전부 이름만 쓴다(`{ "markdown-oxide" }`) — PATH 로 해결되므로
-설치 경로가 바뀌어도 설정을 고칠 필요가 없다.
-
-> 옛 `~/.local/share/nvim/mason/`(86MB)과 lazy.nvim 시절 `lazy/`(57MB)는 정리했다.
-> nvim 데이터 디렉터리는 이제 플러그인 14MB 뿐이다.
-
-### 비활성: harper-ls
-
-`lsp/harper_ls.lua` 에 설정만 넣어두고 껐다. 영문 문법·맞춤법 검사기(로컬 실행,
-Grammarly 대안, Automattic 관리)인데 **한국어를 지원하지 않아** 한글 문서에서 진단이 시끄럽다.
-
-영문 문서를 쓸 때만 켜기:
-```
-brew install harper                   -- 셸에서
-:lua vim.lsp.enable("harper_ls")      -- nvim 에서, 일회성
-```
-상시로 쓰려면 `lua/config/lsp.lua` 의 `vim.lsp.enable` 목록에서 주석을 푼다.
-
----
-
-## 4. 시스템 의존성
-
-| 도구 | 상태 | 용도 |
-|---|---|---|
-| `ripgrep` (rg) | ✅ 설치됨 | fzf-lua 내용 검색 · `grepprg` 기본값 |
-| `fd` | ✅ 설치됨 | fzf-lua 파일 찾기 |
-| `fzf` | ✅ 0.74.2 | fzf-lua 백엔드 (`brew install fzf`) |
-| `bat` | ✅ 설치됨 | fzf-lua 미리보기 문법 강조 |
-| `node` | ✅ v22.23.1 | prettier 실행 |
-| `git` | ✅ | vim.pack 이 플러그인을 git 으로 관리 |
-| **`macism`** | ✅ 설치됨 | **한영 자동전환** ↓ |
-
-### 한영 자동전환 (macOS)
-
-이게 없으면 한글로 쓰다 `<Esc>` 를 눌러도 입력기가 한글에 남아 `dd` 가 `ㅇㅇ` 이 되고
-노멀 모드가 먹통이 된다.
-
-```
-brew tap laishulu/homebrew      # 실제 repo 는 laishulu/homebrew-homebrew
-brew trust laishulu/homebrew    # 서드파티 탭이라 신뢰 승인 필요
-brew install macism
-```
-
-동작: `InsertLeave` 에 ABC 로 전환 → `InsertEnter` 에 직전 한글 입력기로 복원.
-전부 `vim.system` 비동기라 모드 전환이 느려지지 않는다.
-
-한글 입력기 ID 는 **하드코딩하지 않고 시작 시 1회 감지**한다(현재 환경 = Apple 두벌식).
-입력기를 갈아끼워도 설정을 고칠 필요가 없다.
-
-> **경쟁 조건 주의** — macism 읽기는 ~50ms 걸린다(실측). "현재 입력기를 읽고 →
-> 그 결과로 전환"하는 2단 비동기로 짜면, `Esc` 직후 곧바로 `i` 를 눌렀을 때
-> 늦게 도착한 콜백이 한글 복원을 영문으로 덮어쓴다(재현율 5/5).
-> 그래서 핫 패스에서는 조회를 하지 않고, **단일 슬롯 큐**로 "마지막으로 원하는 상태"
-> 하나만 남겨 합친다. 세대 카운터가 늦게 온 조회 콜백을 버린다.
-
-| 명령 | 동작 |
-|---|---|
-| `:ImeDoctor` | 실제로 전환해보고 되돌려지는지까지 검사 |
-| `:ImeSync` | 지금 쓰는 한글 입력기를 복원 대상으로 재감지 |
-| `:ImeRestoreToggle` | Insert 진입 시 한글 복원 끄기/켜기 |
-
-전환이 안 되면 `:ImeDoctor` 를 먼저 돌린다. **일부 서드파티 입력기는 외부에서 건
-ABC 전환을 스스로 되돌린다** — 속 입력기의 "ABC 입력기 제한" 옵션이 그랬다(실측 ~100ms).
-그 경우 설정으로는 고칠 수 없고 입력기 쪽 옵션을 꺼야 한다.
-
----
-
-## 5. 노트 (PKM)
-
-노트 기능은 **플러그인이 아니라 LSP**(markdown-oxide)로 들어온다.
-그래서 이 설정 어디에도 특정 노트 폴더 경로가 박혀 있지 않다.
-
-### 루트 표시 파일로 저장소를 찾는다
-
-markdown-oxide 는 버퍼가 있는 위치에서 위로 올라가며 `.moxide.toml` 또는 `.obsidian`
-을 찾아 그걸 노트 저장소 루트로 삼는다. 덕분에 **여러 저장소가 동시에 각각 동작**한다.
-
-| 저장소 | 루트 표시 | 성격 |
-|---|---|---|
-| `~/workspace/notes` | `.moxide.toml` | 직접 쓰는 노트. workspace 저장소가 함께 관리 |
-| iCloud Obsidian 볼트 | `.obsidian` | oracle 캡처 아카이브 (읽기·검색용) |
-
-> **`.git` 은 루트 표시에서 일부러 뺐다.** notes/ 가 `~/workspace` 저장소 안에 있어서
-> `.git` 을 두면 워크스페이스 전체 마크다운 716개(production 681 · toolbox 30)가
-> 인덱싱되고, 백링크와 `[[링크]]` 완성 후보에 프로젝트 문서가 전부 섞여 들어온다.
-> 지금은 노트 저장소를 명시한 곳에서만 서버가 뜬다 —
-> `~/workspace/CLAUDE.md` 를 열면 markdown-oxide 가 붙지 않는다(검증함).
-
-새 저장소를 만들려면 그 폴더에 빈 `.moxide.toml` 을 두면 끝이다. nvim 설정은 안 건드린다.
-
-```
-~/workspace/notes/
-  .moxide.toml     daily_notes_folder = "daily"  ·  dailynote = "%Y-%m-%d"
-  inbox/           정리 전 빠른 캡처
-  daily/           데일리 노트
-```
-
-### 키맵
-
-| 키 | 동작 |
-|---|---|
-| `<leader>nn` | 새 노트 (이름 입력 → `~/workspace/notes/<이름>.md`) |
-| `<leader>nf` / `<leader>ng` | 노트 파일 찾기 / 내용 검색 |
-| `<leader>nt` / `<leader>ny` | 오늘 / 어제 데일리 노트 |
-| `[[` 입력 | 노트 제목 완성 (내장 자동완성) |
-| `gd` | 링크 따라가기 |
-| **`grr`** | **백링크** — 이 노트를 참조하는 노트 목록 |
-| `gO` | 헤딩 목차 |
-
-`<leader>nt` / `<leader>ny` 는 서버가 **버퍼에 등록**하는 `:LspToday` / `:LspYesterday` 라
-마크다운 버퍼에서만 동작한다. 아무 데서나 쓰려면 노트를 먼저 연다.
-
-> **백링크 주의**: `grr` 은 커서가 **본문**에 있을 때 "이 파일로 향하는 링크"를 찾는다.
-> 제목 헤딩(`# 제목`) 줄에서는 "그 헤딩에 대한 참조"를 찾기 때문에 결과가 다르다.
-
-### 알아둘 것
-
-- 위키링크는 한글 파일명에서도 정상 동작한다 (검증함)
-- `unresolved_diagnostics` 를 켜뒀지만 깨진 `[[링크]]` 진단은 확인하지 못했다.
-  기대하지 말 것 — 필요하면 `.moxide.toml` 을 조정하거나 상류에 확인이 필요하다
-
----
-
-## 6. 마크다운 편집 설정
-
-`after/ftplugin/markdown.lua`. `after/` 인 이유는 Neovim 런타임의 `ftplugin/markdown.vim` 이
-`shiftwidth=4` 를 setlocal 하기 때문 — `~/.config/nvim/ftplugin/` 은 그보다 먼저 로드돼 덮어써진다.
-
-| 설정 | 값 | 이유 |
-|---|---|---|
-| `wrap` + `linebreak` | on | 긴 문단을 화면에서 접되 단어 중간에서 안 자름 |
-| `breakindent` | on | 접힌 줄도 들여쓰기 유지 → 리스트가 안 무너짐 |
-| `textwidth` | 0 | 하드랩 금지. 한글은 어절이 길어 diff 가 지저분해진다 |
-| `number` | off | 글 쓸 때 방해 |
-| `shiftwidth` | 2 | prettier·Obsidian 관례 |
-
-`j`/`k` 는 **보이는 줄** 단위로 이동(`gj`/`gk`). 단 `3j` 처럼 카운트를 붙이면 실제 줄 단위
-— 그래야 상대 줄번호가 여전히 맞는다.
-
-| 키 | 동작 |
-|---|---|
-| `]]` `[[` | 다음 · 이전 헤딩 |
-| `<leader>ts` | 맞춤법 검사 토글 (영문) |
-| `<leader>tr` | 마크다운 렌더 토글 |
-| `gO` | 문서 심볼 = 목차 (markdown-oxide) |
-
----
-
-## 7. 운영
-
-```lua
-:lua vim.pack.update()                      -- 전체 업데이트 (<leader>pu)
-                                            --   변경 검토 후 :w 확정 / :q 취소
-:lua vim.pack.update(nil, {offline = true}) -- 설치 목록·상태만 (<leader>ps)
-:lua vim.pack.update({ "fzf-lua" })         -- 개별
-:lua vim.pack.del({ "이름" })               -- 제거
-```
-
-- **디렉터리를 손으로 지우지 말 것** — 락파일이 어긋나 다음 시작 때 재설치된다
-- 추가: `lua/config/plugins.lua` 의 `vim.pack.add` 에 한 줄 넣고 재시작
-- 플러그인 위치: `~/.local/share/nvim/site/pack/core/opt/`
-- `nvim-pack-lock.json` 은 이 디렉터리에 생성된다 → git 에 같이 커밋하면 다른 기기에서 동일 리비전 재현
-
-### vim.pack 의 한계
-
-내장 문서가 **experimental** 로 명시하고 있다(`:h vim.pack`, pack.txt:211).
-이벤트/파일타입 기반 지연 로딩이 없어서 전부 시작 시 로드된다. 7개 기준 31ms 라 문제 없지만,
-플러그인이 30개를 넘어가면 lazy.nvim 쪽이 유리해진다.
+`nvim/` 은 원래 `~/.config/nvim` 의 독립 저장소였다. `git mv` 로 하위
+디렉터리에 넣었으므로 그 이전 커밋도 `git log --follow nvim/<파일>` 로 이어진다.
