@@ -22,6 +22,22 @@ o.shiftwidth = 2
 o.tabstop = 2
 o.smartindent = true
 
+-- Objective-C 파일타입 교정 (Swift/ObjC 저장소를 열 때만 의미가 있다)
+--
+-- `.m` 은 Objective-C 와 MATLAB 이 확장자를 공유해서 Neovim 이 앞 100줄을 훑어
+-- 추측한다. 배너 주석(`/**** ---- ****/`)이 첫 `#import` 보다 먼저 나오면
+-- murphi/matlab 로 넘어가고, 그러면 sourcekit-lsp 가 그 파일에 아예 안 붙는다.
+-- 이 변수는 detect 최상단에서 검사되므로 추측을 건너뛰는 하드 오버라이드다.
+-- (MATLAB 을 쓴다면 이 줄을 빼야 한다)
+vim.g.filetype_m = "objc"
+
+-- `.h` 는 기본적으로 objcpp(`@interface` 가 있을 때) 또는 cpp 로 잡히고 objc/c 가
+-- 되지 않는다. ObjC 저장소에서는 이쪽이 맞다.
+vim.g.c_syntax_for_h = 1
+
+-- CocoaPods 가 두는 prefix 헤더(.pch)는 파일타입이 아예 안 잡힌다.
+vim.filetype.add({ extension = { pch = "objc" } })
+
 -- 검색
 o.ignorecase = true
 o.smartcase = true
