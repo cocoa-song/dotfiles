@@ -90,10 +90,7 @@ vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter", "CursorHold", "TermClos
 vim.api.nvim_create_autocmd("FileChangedShellPost", {
   group = vim.api.nvim_create_augroup("file_changed_notify", { clear = true }),
   callback = function(ev)
-    vim.notify(
-      ("Reloaded: %s (changed on disk)"):format(vim.fn.fnamemodify(ev.file, ":t")),
-      vim.log.levels.WARN
-    )
+    vim.notify(("Reloaded: %s (changed on disk)"):format(vim.fn.fnamemodify(ev.file, ":t")), vim.log.levels.WARN)
   end,
 })
 

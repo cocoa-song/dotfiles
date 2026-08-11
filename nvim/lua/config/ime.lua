@@ -115,10 +115,7 @@ vim.api.nvim_create_user_command("ImeDoctor", function()
                   "restore to  : " .. (M.korean or "(not detected yet)"),
                   "",
                   reverted
-                      and ("⛔ The switch to ABC was reverted — your IME is undoing it.\n"
-                        .. "Turn off its 'restrict ABC input source' style option.\n"
-                        .. '(SokIM: menu bar 한/A → uncheck "ABC 입력기 제한")\n'
-                        .. "While that option is on, no nvim config can fix this.")
+                      and ("⛔ The switch to ABC was reverted — your IME is undoing it.\n" .. "Turn off its 'restrict ABC input source' style option.\n" .. '(SokIM: menu bar 한/A → uncheck "ABC 입력기 제한")\n' .. "While that option is on, no nvim config can fix this.")
                     or "✅ The switch to ABC holds.",
                 }, "\n"),
                 reverted and vim.log.levels.ERROR or vim.log.levels.INFO

@@ -8,7 +8,7 @@
 -- 포함하고, 완성은 vim.lsp.completion(내장)이 처리한다.
 
 vim.lsp.enable({
-  "lua_ls",         -- Lua (Neovim 플러그인 작성)
+  "lua_ls", -- Lua (Neovim 플러그인 작성)
   "markdown_oxide", -- 마크다운 PKM: [[링크]] 완성 · 백링크 · 데일리 노트 · 태그
   -- Swift / Objective-C. Xcode·Swift 툴체인이 없는 기기에서는 cmd 가 없어
   -- Neovim 이 알림 없이 건너뛴다(실측) — 그대로 둬도 다른 기기가 안 깨진다.
