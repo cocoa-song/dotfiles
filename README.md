@@ -3,14 +3,15 @@
 기기 간에 공유하는 개인 설정.
 
 ```
-nvim/       마크다운 워크벤치 (Neovim 0.12) — 자세한 건 nvim/README.md
-ghostty/    터미널
-zsh/        셸 — 자세한 건 아래 "zsh"
-Brewfile    위 설정이 의존하는 외부 도구 전부
+nvim/          마크다운 워크벤치 (Neovim 0.12) — 자세한 건 nvim/README.md
+ghostty/       터미널
+zsh/           셸 — 자세한 건 아래 "zsh"
+starship.toml  프롬프트
+Brewfile       위 설정이 의존하는 외부 도구 전부
 ```
 
-`~/.config/nvim`, `~/.config/ghostty`, 그리고 `~/.zshrc`·`~/.zprofile`·
-`~/.zsh_plugins.txt` 는 이 저장소를 가리키는 심볼릭 링크다.
+`~/.config/nvim`, `~/.config/ghostty`, `~/.config/starship.toml`, 그리고
+`~/.zshrc`·`~/.zprofile`·`~/.zsh_plugins.txt` 는 이 저장소를 가리키는 심볼릭 링크다.
 
 ## 새 기기에 세팅
 
@@ -63,7 +64,11 @@ mv ~/.zshrc ~/.zshrc.bak-$(date +%Y%m%d)   # 기존 설정이 있으면
 ln -s ~/dotfiles/zsh/zshrc           ~/.zshrc
 ln -s ~/dotfiles/zsh/zprofile        ~/.zprofile
 ln -s ~/dotfiles/zsh/zsh_plugins.txt ~/.zsh_plugins.txt
+ln -s ~/dotfiles/starship.toml       ~/.config/starship.toml
 ```
+
+`brew bundle` 을 아직 안 돌렸어도 셸은 깨지지 않는다 — antidote·starship·fzf 는
+있을 때만 부르도록 가드가 걸려 있다(플러그인과 프롬프트만 안 뜬다).
 
 플러그인은 antidote 가 첫 셸 실행 때 `~/.zsh/plugins` 로 클론한다(목록만 추적,
 실체는 추적하지 않는다). `ANTIDOTE_HOME` 을 기본값 `~/Library/Caches` 에서

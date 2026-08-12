@@ -3,9 +3,13 @@
 # ── 플러그인 (antidote) ──────────────────────────────────────────────
 # ANTIDOTE_HOME 기본값은 ~/Library/Caches — OS 캐시 정리에 날아가면
 # 정적 번들만 남아 깨진 경로를 source 하므로 캐시 밖에 둔다.
+# 가드 이유: 새 기기에서 `brew bundle` 전에 셸을 열면 이 줄이 매번
+# 에러를 뱉는다. 없으면 조용히 건너뛰고 셸은 정상 동작한다.
 export ANTIDOTE_HOME=$HOME/.zsh/plugins
-source /opt/homebrew/opt/antidote/share/antidote/antidote.zsh
-antidote load
+if [[ -r /opt/homebrew/opt/antidote/share/antidote/antidote.zsh ]]; then
+  source /opt/homebrew/opt/antidote/share/antidote/antidote.zsh
+  antidote load
+fi
 
 # ── completion ──────────────────────────────────────────────────────
 fpath=(~/.zsh/completions $fpath)
@@ -45,10 +49,14 @@ alias tailscale="/Applications/Tailscale.app/Contents/MacOS/Tailscale"
 export HOMEBREW_GITHUB_API_TOKEN="$(gh auth token 2>/dev/null)"
 
 # ── prompt / fzf ────────────────────────────────────────────────────
-eval "$(starship init zsh)"
-# ZLE 가 실제로 켜진 셸에서만 — tty 없는 `zsh -i -c` 에서 fzf 가
+# 둘 다 brew 의존이라 위와 같은 이유로 존재할 때만 부른다.
+(( $+commands[starship] )) && eval "$(starship init zsh)"
+
+# fzf 는 ZLE 이 실제로 켜진 셸에서만 — tty 없는 `zsh -i -c` 에서
 # "can't change option: zle" 를 뱉는 걸 막는다.
-[[ -o zle ]] && source <(fzf --zsh)   # Ctrl-R 퍼지 히스토리 · Ctrl-T · Alt-C
+if [[ -o zle ]] && (( $+commands[fzf] )); then
+  source <(fzf --zsh)              # Ctrl-R 퍼지 히스토리 · Ctrl-T · Alt-C
+fi
 
 # ── 키 바인딩 ───────────────────────────────────────────────────────
 # 위/아래 = 입력한 접두어로 히스토리 검색 (zsh 내장 위젯).
