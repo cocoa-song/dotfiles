@@ -6,12 +6,14 @@
 nvim/          마크다운 워크벤치 (Neovim 0.12) — 자세한 건 nvim/README.md
 ghostty/       터미널
 zsh/           셸 — 자세한 건 아래 "zsh"
+git/           공유 git 설정 + 전역 ignore — 자세한 건 아래 "git"
 starship.toml  프롬프트
 Brewfile       위 설정이 의존하는 외부 도구 전부
 ```
 
-`~/.config/nvim`, `~/.config/ghostty`, `~/.config/starship.toml`, 그리고
-`~/.zshrc`·`~/.zprofile`·`~/.zsh_plugins.txt` 는 이 저장소를 가리키는 심볼릭 링크다.
+`~/.config/nvim`, `~/.config/ghostty`, `~/.config/starship.toml`,
+`~/.config/git/ignore`, 그리고 `~/.zshrc`·`~/.zprofile`·`~/.zsh_plugins.txt` 는
+이 저장소를 가리키는 심볼릭 링크다.
 
 ## 새 기기에 세팅
 
@@ -92,6 +94,31 @@ export ASC_KEY_ID=... ASC_KEY_PATH=...
 
 `.zshrc` 가 아니라 `.zshenv` 인 이유: `.zshrc` 는 **대화형 셸에서만** 읽혀서
 `zsh -c "ship ..."` 같은 비대화형 호출에는 이 값들이 통째로 비어 있다.
+
+### git
+
+```bash
+ln -s ~/dotfiles/git/ignore ~/.config/git/ignore
+```
+
+`~/.gitconfig` 는 **이 저장소에 없다** — `user.name`/`user.email` 과 gh 자격증명
+helper 가 들어가는데 이 저장소는 공개다. 새 기기에서는 손으로 만든다:
+
+```gitconfig
+[include]
+	path = ~/dotfiles/git/shared
+
+[user]
+	name = ...
+	email = ...
+```
+
+`[include]` 를 **맨 위**에 두는 이유: git 은 나중에 읽은 값이 이기므로, 아래에
+같은 키를 적으면 그 기기에서만 공유 설정을 덮어쓸 수 있다.
+
+`git/shared` 는 신원과 무관한 도구·표시 설정만 담는다(delta 페이저, zdiff3
+충돌 표시, colorMoved). gh 가 `gh auth setup-git` 으로 직접 관리하는 credential
+블록은 옮기지 않았다 — 옮겨도 gh 가 `~/.gitconfig` 에 다시 써넣어 중복된다.
 
 ### 노트 저장소
 

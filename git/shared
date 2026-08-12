@@ -1,0 +1,36 @@
+# 기기 간 공유하는 git 설정. `~/.gitconfig` 가 [include] 로 끌어온다.
+#
+# 여기 들어가는 것 = 도구 선택과 표시 방식(신원과 무관한 것).
+# 여기 들어가면 안 되는 것 = user.name/email, 자격증명 helper, 기기별 경로.
+# 이 저장소는 공개다.
+#
+# ⚠ include 는 ~/.gitconfig 맨 위에 있다. 같은 키를 아래에서 다시 쓰면
+#   로컬이 이긴다 — 기기별로 덮어쓰고 싶을 때 그렇게 하면 된다.
+
+[core]
+	# delta. 없으면 git 이 페이저를 못 찾아 diff 출력이 깨지므로
+	# Brewfile 에 git-delta 가 함께 들어 있어야 한다.
+	pager = delta
+
+[interactive]
+	# `git add -p` 같은 대화형 화면에도 같은 렌더를 쓴다.
+	diffFilter = delta --color-only
+
+[delta]
+	navigate = true      # n / N 으로 파일 사이 이동
+	line-numbers = true
+	hyperlinks = true    # OSC8 — Ghostty 에서 파일 경로가 클릭된다
+
+	# 터미널·에디터가 Flexoki Light 다. 어두운 테마로 바꾸면 여기도 같이
+	# 바꿔야 한다(README "테마는 두 곳을 같이 바꾼다" 와 같은 이유).
+	syntax-theme = GitHub
+
+[merge]
+	# zdiff3 는 충돌 블록에 "공통 조상" 을 함께 보여준다. 어느 쪽이 무엇을
+	# 바꿨는지 추측하지 않아도 된다. git 2.35+ 필요.
+	conflictstyle = zdiff3
+
+[diff]
+	# 옮겨진 줄을 삭제+추가가 아니라 "이동" 으로 색을 달리 칠한다.
+	# 리팩터링 diff 에서 실제 변경만 눈에 남는다.
+	colorMoved = default
