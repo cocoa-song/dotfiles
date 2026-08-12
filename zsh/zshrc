@@ -45,6 +45,17 @@ alias vim="nvim"
 alias vi="nvim"
 alias tailscale="/Applications/Tailscale.app/Contents/MacOS/Tailscale"
 
+# eza. ⚠ eza 의 -t 는 ls 와 달리 "시간 정렬"이 아니라 --time 필드 인자를
+# 요구한다 — `ls -lt` 는 에러가 난다. 그 용도는 아래 lt 별칭을 쓴다.
+# (--git 은 공짜다: 이 모노레포에서 실측 eza 5.8ms / --git 포함 5.7ms.)
+if (( $+commands[eza] )); then
+  alias ls='eza --group-directories-first --git'
+  alias ll='eza -l  --group-directories-first --git --time-style=long-iso'
+  alias la='eza -la --group-directories-first --git --time-style=long-iso'
+  alias lt='eza -l  --sort=modified --git --time-style=long-iso'  # ls -lt 대용
+  alias tree='eza --tree --level=2 --group-directories-first'
+fi
+
 # HOMEBREW_GITHUB_API_TOKEN 은 brew 만 읽는다(워크스페이스 전체 확인함).
 # 매 셸에서 `gh auth token` 을 부르면 16.5ms 인데 대부분의 셸은 brew 를
 # 쓰지 않으므로, 실제로 brew 를 부를 때 한 번만 채운다.
@@ -54,13 +65,23 @@ brew() {
   command brew "$@"
 }
 
+# ── 터미널 통합 (Ghostty) ───────────────────────────────────────────
+# Ghostty 는 자기가 "직접" 띄운 셸에만 이 통합을 자동 주입한다. zellij·tmux
+# 팬이나 `exec zsh` 안에서는 안 걸려서 프롬프트 마킹(이전 프롬프트로 점프)과
+# 새 split 의 작업 디렉터리 상속이 죽는다. 중복 초기화는 스크립트 자체가
+# _ghostty_state 로 막으므로 직접 띄운 셸에서 다시 불러도 무해하다.
+if [[ -n $GHOSTTY_RESOURCES_DIR ]]; then
+  source "$GHOSTTY_RESOURCES_DIR"/shell-integration/zsh/ghostty-integration
+fi
+
 # ── prompt / fzf ────────────────────────────────────────────────────
 # 둘 다 brew 의존이라 위와 같은 이유로 존재할 때만 부른다.
 (( $+commands[starship] )) && eval "$(starship init zsh)"
 
-# fzf 는 ZLE 이 실제로 켜진 셸에서만 — tty 없는 `zsh -i -c` 에서
-# "can't change option: zle" 를 뱉는 걸 막는다.
-if [[ -o zle ]] && (( $+commands[fzf] )); then
+# tty 가 붙은 셸에서만. tty 없는 `zsh -i -c` 에서 fzf 가
+# "can't change option: zle" 를 두 줄 뱉는 걸 막는다.
+# (`-o zle` 로는 안 된다 — 그 셸에서도 zle 옵션 자체는 켜져 있다.)
+if [[ -t 0 ]] && (( $+commands[fzf] )); then
   source <(fzf --zsh)              # Ctrl-R 퍼지 히스토리 · Ctrl-T · Alt-C
 fi
 
