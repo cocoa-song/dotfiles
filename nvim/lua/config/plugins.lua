@@ -98,14 +98,26 @@ require("conform").setup({
   formatters_by_ft = {
     lua = { "stylua" },
     markdown = { "prettier" },
+    -- swift-format 은 Xcode 툴체인 번들이라 따로 설치할 게 없다. conform 의
+    -- "swift" 포매터가 `swift format`(Swift 6+) 을 부르므로 PATH 문제도 없다
+    -- ("swift_format" 쪽은 PATH 의 swift-format 을 찾아 이 머신에선 실패한다).
+    -- 스타일은 워크스페이스 루트 .swift-format — 실측으로 4칸/120자.
+    swift = { "swift" },
   },
-  -- 저장 시 자동 포맷은 Lua 만. 마크다운은 <leader>cf 로 수동.
+  -- 저장 시 자동 포맷은 Lua 만. 마크다운·Swift 는 <leader>cf 로 수동.
   --
   -- prettier 의 한글 처리는 실측으로 확인했다 — 표는 글자 폭을 정확히 계산해
   -- 정렬하고(:---: 지시자도 존중), proseWrap=preserve 라 문단을 재배치하지 않는다.
   -- 다만 저장할 때마다 리스트 마커(`*`/`-`)·중첩 들여쓰기(4→2칸)·`1)`→`1.` 을
   -- 정규화하므로, 남이 쓴 문서나 캡처된 노트를 열었다 저장만 해도 diff 가 생긴다.
   -- 그게 싫어서 수동으로 둔다. 자동이 편하면 아래 filetype 조건을 지우면 된다.
+  --
+  -- Swift 도 같은 이유로 수동이다. swift-format 은 린터가 아니라 AST 에서
+  -- 파일을 다시 찍어내는 재포매터라, 기존 코드에 돌리면 실측 46.5% 가 바뀐다
+  -- (production/ 소스 1,630줄 표본. 규칙을 최소로 줄여도 33%). 세미콜론으로
+  -- 한 줄에 붙여 쓴 본문을 펼치는 식의 구조 변경이 대부분이라 설정으로는 못 막는다.
+  -- 지금은 새로 쓰는 파일과 손대는 파일에만 <leader>cf 로 적용한다. 저장소
+  -- 전체를 한 번에 정리할지는 별도 결정 사항 — git blame 이 통째로 끊긴다.
   format_on_save = function(bufnr)
     if vim.bo[bufnr].filetype ~= "lua" then
       return nil
