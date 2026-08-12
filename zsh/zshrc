@@ -45,8 +45,14 @@ alias vim="nvim"
 alias vi="nvim"
 alias tailscale="/Applications/Tailscale.app/Contents/MacOS/Tailscale"
 
-# brew 전용. gh 호출이 ~30ms 라 대화형에만 둔다.
-export HOMEBREW_GITHUB_API_TOKEN="$(gh auth token 2>/dev/null)"
+# HOMEBREW_GITHUB_API_TOKEN 은 brew 만 읽는다(워크스페이스 전체 확인함).
+# 매 셸에서 `gh auth token` 을 부르면 16.5ms 인데 대부분의 셸은 brew 를
+# 쓰지 않으므로, 실제로 brew 를 부를 때 한 번만 채운다.
+brew() {
+  [[ -n $HOMEBREW_GITHUB_API_TOKEN ]] || \
+    export HOMEBREW_GITHUB_API_TOKEN="$(command gh auth token 2>/dev/null)"
+  command brew "$@"
+}
 
 # ── prompt / fzf ────────────────────────────────────────────────────
 # 둘 다 brew 의존이라 위와 같은 이유로 존재할 때만 부른다.
