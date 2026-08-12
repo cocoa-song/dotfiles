@@ -17,22 +17,51 @@ Brewfile       위 설정이 의존하는 외부 도구 전부
 
 ## 새 기기에 세팅
 
-```bash
-git clone git@github.com:hoemoon/dotfiles.git ~/dotfiles
+위에서 아래로 순서대로. 각 단계의 함정은 아래 소절에 따로 적었다.
 
+```bash
+# ── 1. 클론 ───────────────────────────────────────────────────────
+git clone git@github.com:hoemoon/dotfiles.git ~/dotfiles
+mkdir -p ~/.config
+
+# ── 2. 도구 ───────────────────────────────────────────────────────
 # macism 이 서드파티 탭이라 신뢰 승인이 먼저 필요하다 (없으면 bundle 이 멈춘다)
 brew tap laishulu/homebrew
 brew trust laishulu/homebrew
 brew bundle --file ~/dotfiles/Brewfile
 
-# 기존 설정이 있으면 덮어쓰지 말고 밀어둔다
-mv ~/.config/nvim    ~/.config/nvim.bak-$(date +%Y%m%d)
-mv ~/.config/ghostty ~/.config/ghostty.bak-$(date +%Y%m%d)
+# ── 3. 기존 설정 밀어두기 (덮어쓰지 않는다) ───────────────────────
+for f in ~/.config/nvim ~/.config/ghostty ~/.config/starship.toml \
+         ~/.config/git/ignore ~/.zshrc ~/.zprofile ~/.zsh_plugins.txt; do
+  [[ -e $f && ! -L $f ]] && mv "$f" "$f.bak-$(date +%Y%m%d)"
+done
 
-ln -s ~/dotfiles/nvim    ~/.config/nvim
-ln -s ~/dotfiles/ghostty ~/.config/ghostty
+# ── 4. 심볼릭 링크 ────────────────────────────────────────────────
+ln -s ~/dotfiles/nvim                ~/.config/nvim
+ln -s ~/dotfiles/ghostty             ~/.config/ghostty
+ln -s ~/dotfiles/starship.toml       ~/.config/starship.toml
+mkdir -p ~/.config/git
+ln -s ~/dotfiles/git/ignore          ~/.config/git/ignore
+ln -s ~/dotfiles/zsh/zshrc           ~/.zshrc
+ln -s ~/dotfiles/zsh/zprofile        ~/.zprofile
+ln -s ~/dotfiles/zsh/zsh_plugins.txt ~/.zsh_plugins.txt
 
+# ── 5. 추적하지 않는 로컬 파일 2개를 손으로 만든다 ────────────────
+#      내용은 아래 "zsh"(~/.zshenv) · "git"(~/.gitconfig) 소절 참고.
+#      이 저장소는 공개라 신원·자격증명이 들어가는 파일은 추적하지 않는다.
+
+# ── 6. 첫 실행 ────────────────────────────────────────────────────
+exec zsh    # antidote 가 ~/.zsh/plugins 로 플러그인을 클론한다
 nvim        # vim.pack 이 nvim/nvim-pack-lock.json 대로 플러그인을 설치한다
+```
+
+**검증** — 설정 파일을 읽지 말고 실물로 확인한다:
+
+```bash
+ghostty +show-config | grep -E '^(font-family =|theme)'   # Flexoki Light 인가
+git config --list --show-origin | grep delta              # git/shared 에서 오나
+print -l $path | sort | uniq -d                           # 중복 0 이어야
+bindkey | grep -c fzf                                      # 4 개
 ```
 
 ### ⚠ macOS: Ghostty 는 설정 파일을 **두 곳**에서 읽는다
@@ -61,16 +90,11 @@ ghostty +show-config | grep -E '^(font-family =|theme)'
 
 ### zsh
 
-```bash
-mv ~/.zshrc ~/.zshrc.bak-$(date +%Y%m%d)   # 기존 설정이 있으면
-ln -s ~/dotfiles/zsh/zshrc           ~/.zshrc
-ln -s ~/dotfiles/zsh/zprofile        ~/.zprofile
-ln -s ~/dotfiles/zsh/zsh_plugins.txt ~/.zsh_plugins.txt
-ln -s ~/dotfiles/starship.toml       ~/.config/starship.toml
-```
+링크는 위 4단계에 있다. 여기서는 손으로 만들어야 하는 `~/.zshenv` 만 다룬다.
 
 `brew bundle` 을 아직 안 돌렸어도 셸은 깨지지 않는다 — antidote·starship·fzf 는
-있을 때만 부르도록 가드가 걸려 있다(플러그인과 프롬프트만 안 뜬다).
+있을 때만 부르도록 가드가 걸려 있다(플러그인과 프롬프트만 안 뜬다). antidote 경로는
+`HOMEBREW_PREFIX` 를 따라가므로 Intel Mac(`/usr/local`)에서도 잡힌다.
 
 플러그인은 antidote 가 첫 셸 실행 때 `~/.zsh/plugins` 로 클론한다(목록만 추적,
 실체는 추적하지 않는다). `ANTIDOTE_HOME` 을 기본값 `~/Library/Caches` 에서
@@ -97,12 +121,9 @@ export ASC_KEY_ID=... ASC_KEY_PATH=...
 
 ### git
 
-```bash
-ln -s ~/dotfiles/git/ignore ~/.config/git/ignore
-```
-
-`~/.gitconfig` 는 **이 저장소에 없다** — `user.name`/`user.email` 과 gh 자격증명
-helper 가 들어가는데 이 저장소는 공개다. 새 기기에서는 손으로 만든다:
+링크는 위 4단계에 있다. `~/.gitconfig` 는 **이 저장소에 없다** — `user.name`/
+`user.email` 과 gh 자격증명 helper 가 들어가는데 이 저장소는 공개다.
+새 기기에서는 손으로 만든다:
 
 ```gitconfig
 [include]
