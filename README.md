@@ -3,7 +3,8 @@
 기기 간에 공유하는 개인 설정.
 
 ```
-bin/sync       다른 기기를 최신으로 맞춘다 — 아래 "갱신"
+bin/setup      새 기기 첫 세팅 (clone 직후 한 번) — 아래 "새 기기에 세팅"
+bin/sync       이미 세팅된 기기를 최신으로 — 아래 "갱신"
 nvim/          마크다운 워크벤치 (Neovim 0.12) — 자세한 건 nvim/README.md
 ghostty/       터미널
 zsh/           셸 — 자세한 건 아래 "zsh"
@@ -34,7 +35,23 @@ pull 하고, 빠진 심링크를 걸고, Brewfile 을 맞춘다. 여러 번 돌�
 
 ## 새 기기에 세팅
 
-위에서 아래로 순서대로. 각 단계의 함정은 아래 소절에 따로 적었다.
+```bash
+git clone https://github.com/hoemoon/dotfiles.git ~/dotfiles
+~/dotfiles/bin/setup
+```
+
+이게 전부다. 중간에 몇 가지를 물어본다 — 관리자 암호(Homebrew 설치),
+git 이름·이메일, 이 기기에서 ASC 배포를 하는지, GitHub 로그인,
+Ghostty 설정 충돌을 밀어둘지. 나머지는 알아서 한다. 여러 번 돌려도 안전하다.
+
+`setup` 이 못 하는 건 둘뿐이고, 해당될 때만 마지막에 알려준다:
+ASC 개인키(`.p8`)를 다른 기기에서 복사하는 것과, Issuer ID 를 GUI 터미널에서
+Keychain 에 등록하는 것.
+
+<details>
+<summary>수동으로 하려면 (setup 이 하는 일)</summary>
+
+각 단계의 함정은 아래 소절에 따로 적었다.
 
 ```bash
 # ── 1. 클론 ───────────────────────────────────────────────────────
@@ -80,6 +97,8 @@ git config --list --show-origin | grep delta              # git/shared 에서 �
 print -l $path | sort | uniq -d                           # 중복 0 이어야
 bindkey | grep -c fzf                                      # 4 개
 ```
+
+</details>
 
 ### ⚠ macOS: Ghostty 는 설정 파일을 **두 곳**에서 읽는다
 
