@@ -476,3 +476,8 @@ markdown-oxide 는 버퍼가 있는 위치에서 위로 올라가며 `.moxide.to
 내장 문서가 **experimental** 로 명시하고 있다(`:h vim.pack`, pack.txt:211).
 이벤트/파일타입 기반 지연 로딩이 없어서 전부 시작 시 로드된다. 7개 기준 31ms 라 문제 없지만,
 플러그인이 30개를 넘어가면 lazy.nvim 쪽이 유리해진다.
+
+## 8. 이력
+
+`nvim/` 은 원래 `~/.config/nvim` 의 독립 저장소였다. `git mv` 로 dotfiles 하위
+디렉터리에 넣었으므로 그 이전 커밋도 `git log --follow nvim/<파일>` 로 이어진다.
