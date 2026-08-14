@@ -21,6 +21,11 @@ all symlinks into this repository.
 document and a script disagree, the script is right. Do not hand-execute a
 procedure that `bin/setup` or `bin/sync` already performs.
 
+Both are Python, standard library only, and target the Python 3.9 that ships with
+the Command Line Tools — on a fresh machine that is the only one present, and
+`bin/sync` is what installs everything else. They take no arguments beyond the
+answers `setup` would otherwise ask for; see `bin/setup --help`.
+
 ## New machine
 
 ```bash
@@ -49,10 +54,6 @@ useful for automation, and it is how the script is tested:
 ```bash
 ~/dotfiles/bin/setup --name "..." --email "..." --no-asc --macism --no-gh
 ```
-
-See `bin/setup --help`. Both scripts are Python (stdlib only) and run on the
-Python 3.9 that ships with the Command Line Tools, since that is the only one
-present on a fresh machine.
 
 Two things `setup` cannot do, reported at the end only when they apply: copying
 the ASC private key (`.p8`) from another machine, and registering the Issuer ID in
