@@ -34,3 +34,15 @@
 	# 옮겨진 줄을 삭제+추가가 아니라 "이동" 으로 색을 달리 칠한다.
 	# 리팩터링 diff 에서 실제 변경만 눈에 남는다.
 	colorMoved = default
+
+[alias]
+	# 넓게 좌우 비교. 좌우 분할만 켜면 줄이 접혀 오히려 읽기 나쁘다
+	# (실측: 폭 160 에서 한쪽 66칸, 79자 넘는 파이썬 줄이 전부 접혔다).
+	# 줄번호를 빼서 폭을 벌고, 접는 대신 자른다.
+	#
+	# feature([delta "이름"])로 묶지 않은 이유: 메인 [delta] 섹션이 feature 를
+	# 이기므로 위의 line-numbers = true 를 feature 로는 끌 수 없다(실측).
+	# -c 로 직접 주면 확실하다.
+	ds = -c delta.side-by-side=true -c delta.line-numbers=false -c delta.wrap-max-lines=0 diff
+	# 단어 단위 diff. 산문에서 한 단어만 고쳐도 줄 전체가 물드는 걸 막는다.
+	dw = diff --word-diff=color
