@@ -1,225 +1,405 @@
-#!/bin/sh
-# 새 기기 첫 세팅. clone 직후 한 번만 돌린다.
-#
-#   git clone https://github.com/hoemoon/dotfiles.git ~/dotfiles
-#   ~/dotfiles/bin/setup
-#
-# 질문은 앞에 모아서 한 번에 묻고, 그 뒤로는 멈추지 않는다. 이미 되어 있는
-# 항목은 묻지도 않는다. 여러 번 돌려도 안전하다.
-#
-# 예외 둘: Homebrew 설치는 sudo 암호를 물으므로 질문보다 먼저 처리하고,
-# `gh auth login` 은 브라우저가 필요해 맨 마지막으로 미룬다.
-#
-# 정상 상태 유지는 bin/sync 가 담당한다. 이 스크립트는 sync 를 부른다.
+#!/usr/bin/env python3
+"""새 기기 첫 세팅. clone 직후 한 번만 돌린다.
 
-set -eu
-DOTFILES="$HOME/dotfiles"
-GHOSTTY_APPCFG="$HOME/Library/Application Support/com.mitchellh.ghostty/config"
+    git clone https://github.com/hoemoon/dotfiles.git ~/dotfiles
+    ~/dotfiles/bin/setup
 
-say()   { printf '%s\n' "$*"; }
-head_() { printf '\n▸ %s\n' "$*"; }
-skip()  { printf '  · %s\n' "$*"; }
-did()   { printf '  + %s\n' "$*"; }
-warn()  { printf '  ⚠ %s\n' "$*"; }
+질문은 앞에 모아서 한 번에 묻고, 그 뒤로는 멈추지 않는다. 이미 되어 있는
+항목은 묻지도 않는다. 여러 번 돌려도 안전하다.
 
-_eof() { printf '\n  입력이 끊겼다 — 중단한다.\n' >&2; exit 1; }
+예외 둘은 구조상 불가피해서 양끝으로 뺐다. Homebrew 설치는 sudo 암호를
+물으므로 질문보다 먼저, `gh auth login` 은 브라우저가 필요해 맨 마지막.
 
-# "3/5" 처럼 진행을 보여준다. 몇 개나 남았는지 모르는 게 제일 답답하다.
-ASKED=0
-_n() { ASKED=$((ASKED + 1)); printf '  %d/%d ' "$ASKED" "$TOTAL"; }
+모든 답은 플래그로도 줄 수 있다(`--help`). 그러면 아무것도 묻지 않으므로
+자동화와 테스트가 가능하다 — 대화형은 값이 빠졌을 때의 폴백일 뿐이다.
 
-ask_yn() {
-	_default="$2"
-	case "$_default" in y) _hint="[Y/n]" ;; *) _hint="[y/N]" ;; esac
-	_n; printf '%s %s ' "$1" "$_hint"
-	read -r _ans || _eof
-	[ -z "$_ans" ] && _ans="$_default"
-	case "$_ans" in [yY]*) return 0 ;; *) return 1 ;; esac
-}
+정상 상태 유지는 bin/sync 가 담당한다. 이 스크립트는 sync 를 부른다.
+python 버전 방침은 bin/sync 참고 — 새 기기에는 CLT 의 3.9 뿐이다.
+"""
 
-# 결과를 stdout 이 아니라 ASK_RESULT 로 돌려준다. $(ask ...) 로 받으면
-# 서브셸이라 ASKED 증가가 유실돼 진행 표시가 1/5 에서 멈춘다(실측).
-ask() {
-	ASK_RESULT=""
-	{ _n; printf '%s: ' "$1"; } >&2
-	while :; do
-		read -r ASK_RESULT || _eof
-		[ -n "$ASK_RESULT" ] && break
-		printf '      (비워둘 수 없다) %s: ' "$1" >&2
-	done
-}
+from __future__ import annotations
 
-# ── 0. Homebrew — sudo 를 물으므로 질문보다 먼저 끝낸다 ──────────────
-head_ "Homebrew"
-if command -v brew >/dev/null 2>&1; then
-	skip "이미 있음 ($(brew --prefix))"
-else
-	say "  설치한다. 관리자 암호를 묻는다."
-	/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-	for p in /opt/homebrew /usr/local; do
-		[ -x "$p/bin/brew" ] && eval "$("$p/bin/brew" shellenv)" && break
-	done
-	did "설치 완료 ($(brew --prefix))"
-fi
+import argparse
+import datetime
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
 
-# ── 1. 물어볼 것을 먼저 정한다 ───────────────────────────────────────
-# 이미 되어 있으면 묻지 않는다. 그래야 재실행이 조용하다.
-Q_GIT=0; Q_ASC=0; Q_MACISM=0; Q_GHOSTTY=0; Q_GH=0
-[ -f "$HOME/.gitconfig" ] || Q_GIT=1
-[ -f "$HOME/.zshenv" ]    || Q_ASC=1
-brew list macism >/dev/null 2>&1 || Q_MACISM=1
-if [ -f "$GHOSTTY_APPCFG" ]; then Q_GHOSTTY=1; fi   # `[ ] &&` 는 set -e 아래서 위험
-gh auth status >/dev/null 2>&1  || Q_GH=1
+if sys.version_info < (3, 9):
+    sys.exit("python 3.9 이상이 필요하다. /usr/bin/python3 로 실행해 볼 것.")
 
-TOTAL=$((Q_GIT * 2 + Q_ASC + Q_MACISM + Q_GHOSTTY + Q_GH))
+HOME = Path.home()
+DOTFILES = HOME / "dotfiles"
+GHOSTTY_APPCFG = HOME / "Library/Application Support/com.mitchellh.ghostty/config"
+TAP = "laishulu/homebrew"
 
-GIT_NAME=""; GIT_EMAIL=""; ASC_KEYID=""
-DO_MACISM=0; DO_GHOSTTY=0; DO_GH=0
+STAMP = datetime.date.today().strftime("%Y%m%d")
 
-if [ "$TOTAL" -eq 0 ]; then
-	head_ "질문"
-	skip "물어볼 게 없다 — 전부 이미 되어 있음"
-else
-	head_ "질문 ${TOTAL}개 — 답하고 나면 끝까지 멈추지 않는다"
-
-	if [ "$Q_GIT" -eq 1 ]; then
-		ask "git 사용자 이름";  GIT_NAME=$ASK_RESULT
-		ask "git 이메일";      GIT_EMAIL=$ASK_RESULT
-	fi
-
-	if [ "$Q_ASC" -eq 1 ]; then
-		if ask_yn "이 기기에서 App Store Connect 배포(ship)를 하나?" n; then
-			ask "ASC_KEY_ID"; ASC_KEYID=$ASK_RESULT
-		fi
-	fi
-
-	if [ "$Q_MACISM" -eq 1 ]; then
-		# 서드파티 탭 신뢰는 보안 결정이라 묻는다. 거절하면 Brewfile 의
-		# tap 줄에서 brew bundle 이 멈추므로 그 사실을 같이 알린다.
-		say "      macism 은 nvim 의 한영 자동전환에 쓰인다. 서드파티 탭"
-		say "      (laishulu/homebrew) 을 신뢰해야 설치된다."
-		if ask_yn "설치할까?" y; then DO_MACISM=1; fi
-	fi
-
-	if [ "$Q_GHOSTTY" -eq 1 ]; then
-		say "      Ghostty 가 이 파일도 읽고, 이쪽이 나중에 읽혀 이긴다:"
-		say "      ${GHOSTTY_APPCFG#$HOME/}"
-		if ask_yn "밀어둘까?" y; then DO_GHOSTTY=1; fi
-	fi
-
-	if [ "$Q_GH" -eq 1 ]; then
-		if ask_yn "GitHub 에 로그인할까? (맨 마지막에 브라우저가 열린다)" y; then
-			DO_GH=1
-		fi
-	fi
-fi
-
-# ── 2. 여기서부터는 묻지 않는다 ──────────────────────────────────────
-
-head_ "서드파티 탭"
-if [ "$DO_MACISM" -eq 1 ]; then
-	brew tap laishulu/homebrew >/dev/null 2>&1 || true
-	brew trust laishulu/homebrew >/dev/null 2>&1 || true
-	did "laishulu/homebrew 신뢰"
-elif [ "$Q_MACISM" -eq 0 ]; then
-	skip "macism 이 이미 있음"
-else
-	warn "건너뜀 — Brewfile 의 tap 줄에서 brew bundle 이 멈출 수 있다"
-	warn "  쓰지 않을 거면 Brewfile 에서 tap/macism 두 줄을 지울 것"
-fi
-
-head_ "~/.gitconfig"
-if [ "$Q_GIT" -eq 0 ]; then
-	skip "이미 있음 (건드리지 않음)"
-else
-	cat > "$HOME/.gitconfig" <<EOF
+GITCONFIG_TEMPLATE = """\
 # 기기별 로컬 설정. 공유분은 아래 include 가 끌어온다.
 # include 를 맨 위에 두는 이유: 뒤에 오는 값이 이기므로, 아래에 같은 키를
 # 적으면 이 기기에서만 공유 설정을 덮어쓸 수 있다.
 [include]
-	path = ~/dotfiles/git/shared
+\tpath = ~/dotfiles/git/shared
 
 [user]
-	name = ${GIT_NAME}
-	email = ${GIT_EMAIL}
-EOF
-	did "만듦"
-fi
+\tname = {name}
+\temail = {email}
+"""
 
-head_ "~/.zshenv"
-if [ "$Q_ASC" -eq 0 ]; then
-	skip "이미 있음 (건드리지 않음)"
-else
-	cat > "$HOME/.zshenv" <<'EOF'
+ZSHENV_BASE = """\
 # 모든 zsh 가 읽는다 (스크립트·비대화형 포함). 출력·무거운 작업 금지.
 typeset -U path PATH
 path=($HOME/.local/bin $path)
 
 export ARCHIVE_DIR="$HOME/Library/Mobile Documents/iCloud~md~obsidian/Documents"
-EOF
-	did "만듦"
-	if [ -n "$ASC_KEYID" ]; then
-		cat >> "$HOME/.zshenv" <<EOF
+"""
 
+ZSHENV_ASC = """
 # App Store Connect. Issuer ID 는 Keychain 에 두고 평문으로 적지 않는다.
-export ASC_KEY_ID=${ASC_KEYID}
-export ASC_KEY_PATH="\$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEYID}.p8"
-[[ -n \$ASC_ISSUER_ID ]] || export ASC_ISSUER_ID="\$(security find-generic-password -s ASC_ISSUER_ID -w 2>/dev/null)"
-EOF
-		did "ASC 블록 추가"
-	fi
-fi
+export ASC_KEY_ID={key_id}
+export ASC_KEY_PATH="$HOME/.appstoreconnect/private_keys/AuthKey_{key_id}.p8"
+[[ -n $ASC_ISSUER_ID ]] || export ASC_ISSUER_ID="$(security find-generic-password -s ASC_ISSUER_ID -w 2>/dev/null)"
+"""
 
-head_ "Ghostty"
-if [ "$DO_GHOSTTY" -eq 1 ]; then
-	mv "$GHOSTTY_APPCFG" "$GHOSTTY_APPCFG.bak-$(date +%Y%m%d)"
-	did "App Support 설정을 밀어둠 (.bak-$(date +%Y%m%d))"
-elif [ "$Q_GHOSTTY" -eq 1 ]; then
-	warn "그대로 둠 — 테마·폰트가 이 저장소 설정과 다를 수 있다"
-else
-	skip "충돌 없음"
-fi
 
-# 링크·패키지는 sync 가 한다 — 목록을 두 곳에 두지 않기 위해서다.
-head_ "링크 · 패키지"
-"$DOTFILES/bin/sync" | sed 's/^/  /' || true
+# ── 출력 ─────────────────────────────────────────────────────────────
+def head(text: str) -> None:
+    print("\n▸ " + text)
 
-head_ "nvim"
-if command -v nvim >/dev/null 2>&1; then
-	say "  플러그인을 내려받는다 (첫 실행이면 몇 분)"
-	nvim --headless +qa >/dev/null 2>&1 || true
-	did "동기화 완료"
-else
-	warn "nvim 이 없다 — brew bundle 이 실패했을 수 있다"
-fi
 
-# ── 3. 브라우저가 필요한 것만 마지막에 ───────────────────────────────
-head_ "GitHub"
-if [ "$DO_GH" -eq 1 ]; then
-	gh auth login
-	gh auth setup-git
-	did "로그인 + git credential helper"
-elif [ "$Q_GH" -eq 0 ]; then
-	skip "이미 로그인됨"
-else
-	skip '건너뜀 — 나중에 gh auth login'
-fi
+def did(text: str) -> None:
+    print("  + " + text)
 
-# ── 4. 검증 ──────────────────────────────────────────────────────────
-head_ "검증"
-if "$DOTFILES/bin/sync" >/dev/null 2>&1; then
-	say "  ✓ 이상 없음"
-else
-	say "  아래를 확인할 것:"
-	"$DOTFILES/bin/sync" 2>&1 | grep '⚠' | sed 's/^/  /' || true
-fi
 
-say ""
-say "끝났다. 새 셸을 열거나: exec zsh"
-if [ -n "$ASC_KEYID" ]; then
-	say ""
-	say "ASC 는 두 가지가 더 필요하다 (스크립트가 못 하는 것):"
-	say "  1. 개인키를 ~/.appstoreconnect/private_keys/ 로 복사 (다른 기기에서)"
-	say "  2. GUI 터미널에서 Issuer ID 를 Keychain 에 등록:"
-	say "     security add-generic-password -U -s ASC_ISSUER_ID -a \"\$USER\" -w '<issuer-id>'"
-fi
+def skip(text: str) -> None:
+    print("  · " + text)
+
+
+def warn(text: str) -> None:
+    print("  ⚠ " + text)
+
+
+def indent(text: str, prefix: str = "  ") -> str:
+    return "\n".join(prefix + line for line in text.rstrip("\n").splitlines())
+
+
+# ── 프롬프트 ─────────────────────────────────────────────────────────
+class Prompter:
+    """질문을 /dev/tty 로 직결한다.
+
+    셸 판에서는 프롬프트를 stdout 에 찍었다가 $(...) 호출부가 그걸 값으로
+    잡아먹었다(user.name 이 "git 사용자 이름: 홍길동" 이 됐다). tty 직결이면
+    stdout 을 누가 캡처하든, stdin 이 어디로 리다이렉트되든 무관해진다.
+    """
+
+    def __init__(self, total: int) -> None:
+        self.total = total
+        self.asked = 0
+        try:
+            self._in = open("/dev/tty", "r")
+            self._out = open("/dev/tty", "w")
+        except OSError:
+            self._in = self._out = None
+
+    @property
+    def available(self) -> bool:
+        return self._in is not None
+
+    def _prefix(self) -> str:
+        self.asked += 1
+        return "  {}/{} ".format(self.asked, self.total)
+
+    def _read(self) -> str:
+        line = self._in.readline()
+        if line == "":  # EOF — 셸 판은 여기서 무한루프였다
+            raise SystemExit("\n  입력이 끊겼다 — 중단한다.")
+        return line.strip()
+
+    def ask(self, prompt: str) -> str:
+        self._out.write(self._prefix() + prompt + ": ")
+        self._out.flush()
+        while True:
+            val = self._read()
+            if val:
+                return val
+            self._out.write("      (비워둘 수 없다) " + prompt + ": ")
+            self._out.flush()
+
+    def ask_yn(self, prompt: str, default: bool) -> bool:
+        hint = "[Y/n]" if default else "[y/N]"
+        self._out.write("{}{} {} ".format(self._prefix(), prompt, hint))
+        self._out.flush()
+        ans = self._read()
+        return default if not ans else ans[:1].lower() == "y"
+
+    def note(self, text: str) -> None:
+        self._out.write("      " + text + "\n")
+        self._out.flush()
+
+
+# ── 외부 명령 ────────────────────────────────────────────────────────
+def run(cmd, capture=True, cwd=None):
+    env = dict(os.environ)
+    env["HOMEBREW_NO_AUTO_UPDATE"] = "1"
+    if capture:
+        return subprocess.run(cmd, cwd=cwd, env=env, stdout=subprocess.PIPE,
+                              stderr=subprocess.STDOUT, text=True)
+    return subprocess.run(cmd, cwd=cwd, env=env)
+
+
+def ok(cmd) -> bool:
+    return run(cmd).returncode == 0
+
+
+# ── 1. Homebrew ──────────────────────────────────────────────────────
+def ensure_homebrew() -> None:
+    head("Homebrew")
+    if shutil.which("brew"):
+        skip("이미 있음 ({})".format(run(["brew", "--prefix"]).stdout.strip()))
+        return
+
+    print("  설치한다. 관리자 암호를 묻는다.")
+    url = "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
+    # 진행 표시와 sudo 프롬프트가 보여야 하므로 출력을 잡지 않는다.
+    script = subprocess.run(["curl", "-fsSL", url], stdout=subprocess.PIPE, text=True)
+    if script.returncode != 0:
+        sys.exit("  Homebrew 설치 스크립트를 받지 못했다.")
+    if subprocess.run(["/bin/bash", "-c", script.stdout]).returncode != 0:
+        sys.exit("  Homebrew 설치 실패.")
+
+    for prefix in ("/opt/homebrew", "/usr/local"):
+        brew = Path(prefix) / "bin/brew"
+        if brew.is_file():
+            # 이 프로세스에도 즉시 반영 (.zprofile 은 다음 로그인부터다)
+            out = subprocess.run([str(brew), "shellenv"], stdout=subprocess.PIPE,
+                                 text=True).stdout
+            for line in out.splitlines():
+                if line.startswith("export "):
+                    k, _, v = line[len("export "):].partition("=")
+                    os.environ[k] = v.strip('"')
+            did("설치 완료 ({})".format(prefix))
+            return
+    sys.exit("  brew 를 찾지 못했다.")
+
+
+# ── 2. 무엇을 물을지 정한다 ──────────────────────────────────────────
+class Plan:
+    def __init__(self, args) -> None:
+        self.git = not (HOME / ".gitconfig").is_file()
+        self.zshenv = not (HOME / ".zshenv").is_file()
+        self.macism = not ok(["brew", "list", "macism"])
+        self.ghostty = GHOSTTY_APPCFG.is_file()
+        self.gh = not ok(["gh", "auth", "status"])
+
+        # 플래그로 이미 답이 온 항목은 묻지 않는다.
+        self.ask_git = self.git and (args.name is None or args.email is None)
+        self.ask_asc = self.zshenv and args.asc_key_id is None and not args.no_asc
+        self.ask_macism = self.macism and args.macism is None
+        self.ask_ghostty = self.ghostty and args.ghostty is None
+        self.ask_gh = self.gh and args.gh is None
+
+    def total(self) -> int:
+        return (2 if self.ask_git else 0) + int(self.ask_asc) + \
+               int(self.ask_macism) + int(self.ask_ghostty) + int(self.ask_gh)
+
+
+class Answers:
+    name = ""
+    email = ""
+    asc_key_id = ""
+    macism = False
+    ghostty = False
+    gh = False
+
+
+def collect(plan: Plan, args) -> Answers:
+    a = Answers()
+    a.name = args.name or ""
+    a.email = args.email or ""
+    a.asc_key_id = args.asc_key_id or ""
+    a.macism = bool(args.macism) if args.macism is not None else False
+    a.ghostty = bool(args.ghostty) if args.ghostty is not None else False
+    a.gh = bool(args.gh) if args.gh is not None else False
+
+    total = plan.total()
+    if total == 0:
+        head("질문")
+        skip("물어볼 게 없다 — 전부 이미 되어 있거나 플래그로 받았음")
+        return a
+
+    p = Prompter(total)
+    if not p.available:
+        sys.exit("\n답이 {}개 부족한데 터미널이 없다. 플래그로 주거나 "
+                 "터미널에서 실행할 것 (--help).".format(total))
+
+    head("질문 {}개 — 답하고 나면 끝까지 멈추지 않는다".format(total))
+
+    if plan.ask_git:
+        a.name = p.ask("git 사용자 이름")
+        a.email = p.ask("git 이메일")
+
+    if plan.ask_asc:
+        if p.ask_yn("이 기기에서 App Store Connect 배포(ship)를 하나?", False):
+            a.asc_key_id = p.ask("ASC_KEY_ID")
+
+    if plan.ask_macism:
+        # 서드파티 탭 신뢰는 보안 결정이라 묻는다.
+        p.note("macism 은 nvim 의 한영 자동전환에 쓰인다. 서드파티 탭")
+        p.note("({}) 을 신뢰해야 설치된다.".format(TAP))
+        a.macism = p.ask_yn("설치할까?", True)
+
+    if plan.ask_ghostty:
+        p.note("Ghostty 가 이 파일도 읽고, 이쪽이 나중에 읽혀 이긴다:")
+        p.note(str(GHOSTTY_APPCFG).replace(str(HOME) + "/", ""))
+        a.ghostty = p.ask_yn("밀어둘까?", True)
+
+    if plan.ask_gh:
+        a.gh = p.ask_yn("GitHub 에 로그인할까? (맨 마지막에 브라우저가 열린다)", True)
+
+    return a
+
+
+# ── 3. 여기서부터는 묻지 않는다 ──────────────────────────────────────
+def do_tap(plan: Plan, a: Answers) -> None:
+    head("서드파티 탭")
+    if not plan.macism:
+        skip("macism 이 이미 있음")
+    elif a.macism:
+        run(["brew", "tap", TAP])
+        run(["brew", "trust", TAP])
+        did("{} 신뢰".format(TAP))
+    else:
+        warn("건너뜀 — Brewfile 의 tap 줄에서 brew bundle 이 멈출 수 있다")
+        warn("  쓰지 않을 거면 Brewfile 에서 tap/macism 두 줄을 지울 것")
+
+
+def do_gitconfig(plan: Plan, a: Answers) -> None:
+    head("~/.gitconfig")
+    if not plan.git:
+        skip("이미 있음 (건드리지 않음)")
+        return
+    (HOME / ".gitconfig").write_text(
+        GITCONFIG_TEMPLATE.format(name=a.name, email=a.email))
+    did("만듦")
+
+
+def do_zshenv(plan: Plan, a: Answers) -> None:
+    head("~/.zshenv")
+    if not plan.zshenv:
+        skip("이미 있음 (건드리지 않음)")
+        return
+    text = ZSHENV_BASE
+    if a.asc_key_id:
+        text += ZSHENV_ASC.format(key_id=a.asc_key_id)
+    (HOME / ".zshenv").write_text(text)
+    did("만듦" + (" (ASC 블록 포함)" if a.asc_key_id else ""))
+
+
+def do_ghostty(plan: Plan, a: Answers) -> None:
+    head("Ghostty")
+    if not plan.ghostty:
+        skip("충돌 없음")
+    elif a.ghostty:
+        GHOSTTY_APPCFG.rename(GHOSTTY_APPCFG.with_name(
+            GHOSTTY_APPCFG.name + ".bak-" + STAMP))
+        did("App Support 설정을 밀어둠 (.bak-{})".format(STAMP))
+    else:
+        warn("그대로 둠 — 테마·폰트가 이 저장소 설정과 다를 수 있다")
+
+
+def do_sync() -> None:
+    # 링크·패키지는 sync 가 한다 — 목록을 두 곳에 두지 않기 위해서다.
+    head("링크 · 패키지")
+    p = run([str(DOTFILES / "bin/sync")])
+    print(indent(p.stdout))
+
+
+def do_nvim() -> None:
+    head("nvim")
+    if shutil.which("nvim") is None:
+        warn("nvim 이 없다 — brew bundle 이 실패했을 수 있다")
+        return
+    print("  플러그인을 내려받는다 (첫 실행이면 몇 분)")
+    run(["nvim", "--headless", "+qa"])
+    did("동기화 완료")
+
+
+def do_gh(plan: Plan, a: Answers) -> None:
+    head("GitHub")
+    if not plan.gh:
+        skip("이미 로그인됨")
+    elif a.gh:
+        # 브라우저·대화형이라 출력을 잡지 않는다.
+        run(["gh", "auth", "login"], capture=False)
+        run(["gh", "auth", "setup-git"], capture=False)
+        did("로그인 + git credential helper")
+    else:
+        skip("건너뜀 — 나중에 gh auth login")
+
+
+def verify() -> None:
+    head("검증")
+    p = run([str(DOTFILES / "bin/sync")])
+    if p.returncode == 0:
+        print("  ✓ 이상 없음")
+        return
+    print("  아래를 확인할 것:")
+    for line in p.stdout.splitlines():
+        if "⚠" in line:
+            print("  " + line)
+
+
+# ── 진입점 ───────────────────────────────────────────────────────────
+def parse_args(argv=None):
+    ap = argparse.ArgumentParser(
+        description="새 기기 첫 세팅. 답을 플래그로 주면 아무것도 묻지 않는다.")
+    ap.add_argument("--name", help="git user.name")
+    ap.add_argument("--email", help="git user.email")
+    ap.add_argument("--asc-key-id", help="App Store Connect 키 ID")
+    ap.add_argument("--no-asc", action="store_true", help="ASC 를 쓰지 않는다")
+    ap.add_argument("--macism", dest="macism", action="store_true", default=None)
+    ap.add_argument("--no-macism", dest="macism", action="store_false")
+    ap.add_argument("--ghostty", dest="ghostty", action="store_true", default=None,
+                    help="충돌하는 Ghostty 설정을 밀어둔다")
+    ap.add_argument("--no-ghostty", dest="ghostty", action="store_false")
+    ap.add_argument("--gh", dest="gh", action="store_true", default=None,
+                    help="gh auth login 을 실행한다")
+    ap.add_argument("--no-gh", dest="gh", action="store_false")
+    return ap.parse_args(argv)
+
+
+def main() -> int:
+    if not (DOTFILES / ".git").exists():
+        print("{} 가 git 저장소가 아니다.".format(DOTFILES), file=sys.stderr)
+        return 2
+
+    args = parse_args()
+    ensure_homebrew()
+
+    plan = Plan(args)
+    a = collect(plan, args)
+
+    do_tap(plan, a)
+    do_gitconfig(plan, a)
+    do_zshenv(plan, a)
+    do_ghostty(plan, a)
+    do_sync()
+    do_nvim()
+    do_gh(plan, a)
+    verify()
+
+    print("\n끝났다. 새 셸을 열거나: exec zsh")
+    if a.asc_key_id:
+        print("\nASC 는 두 가지가 더 필요하다 (스크립트가 못 하는 것):")
+        print("  1. 개인키를 ~/.appstoreconnect/private_keys/ 로 복사 (다른 기기에서)")
+        print("  2. GUI 터미널에서 Issuer ID 를 Keychain 에 등록:")
+        print("     security add-generic-password -U -s ASC_ISSUER_ID"
+              " -a \"$USER\" -w '<issuer-id>'")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

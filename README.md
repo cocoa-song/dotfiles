@@ -43,6 +43,17 @@ password, so it happens *before* the questions; `gh auth login` needs a browser,
 it happens *last*. `brew bundle` may also prompt for a password when installing
 casks.
 
+Every answer can be supplied as a flag instead, in which case nothing is asked —
+useful for automation, and it is how the script is tested:
+
+```bash
+~/dotfiles/bin/setup --name "..." --email "..." --no-asc --macism --no-gh
+```
+
+See `bin/setup --help`. Both scripts are Python (stdlib only) and run on the
+Python 3.9 that ships with the Command Line Tools, since that is the only one
+present on a fresh machine.
+
 Two things `setup` cannot do, reported at the end only when they apply: copying
 the ASC private key (`.p8`) from another machine, and registering the Issuer ID in
 the Keychain, which only works from a GUI terminal session.
