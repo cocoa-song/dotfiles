@@ -4,77 +4,134 @@
 #   git clone https://github.com/hoemoon/dotfiles.git ~/dotfiles
 #   ~/dotfiles/bin/setup
 #
-# 중간에 몇 가지를 물어본다(sudo 암호 · 이름/이메일 · ASC 여부 · 브라우저 인증).
-# 그 외에는 전부 알아서 한다. 여러 번 돌려도 안전하다 — 이미 된 건 건너뛴다.
+# 질문은 앞에 모아서 한 번에 묻고, 그 뒤로는 멈추지 않는다. 이미 되어 있는
+# 항목은 묻지도 않는다. 여러 번 돌려도 안전하다.
+#
+# 예외 둘: Homebrew 설치는 sudo 암호를 물으므로 질문보다 먼저 처리하고,
+# `gh auth login` 은 브라우저가 필요해 맨 마지막으로 미룬다.
 #
 # 정상 상태 유지는 bin/sync 가 담당한다. 이 스크립트는 sync 를 부른다.
 
 set -eu
 DOTFILES="$HOME/dotfiles"
+GHOSTTY_APPCFG="$HOME/Library/Application Support/com.mitchellh.ghostty/config"
 
-say()  { printf '%s\n' "$*"; }
+say()   { printf '%s\n' "$*"; }
 head_() { printf '\n▸ %s\n' "$*"; }
-skip() { printf '  · %s\n' "$*"; }
-did()  { printf '  + %s\n' "$*"; }
+skip()  { printf '  · %s\n' "$*"; }
+did()   { printf '  + %s\n' "$*"; }
+warn()  { printf '  ⚠ %s\n' "$*"; }
 
-# stdin 이 끊기면(Ctrl-D, </dev/null) 즉시 멈춘다. 기본값으로 조용히 진행하면
-# 묻지도 않고 파일을 만들게 되고, 값 입력 쪽은 무한루프에 빠진다(실측).
 _eof() { printf '\n  입력이 끊겼다 — 중단한다.\n' >&2; exit 1; }
 
-# 예/아니오. 기본값은 두 번째 인자(y 또는 n).
+# "3/5" 처럼 진행을 보여준다. 몇 개나 남았는지 모르는 게 제일 답답하다.
+ASKED=0
+_n() { ASKED=$((ASKED + 1)); printf '  %d/%d ' "$ASKED" "$TOTAL"; }
+
 ask_yn() {
-	_prompt="$1"; _default="$2"
+	_default="$2"
 	case "$_default" in y) _hint="[Y/n]" ;; *) _hint="[y/N]" ;; esac
-	printf '  %s %s ' "$_prompt" "$_hint"
+	_n; printf '%s %s ' "$1" "$_hint"
 	read -r _ans || _eof
 	[ -z "$_ans" ] && _ans="$_default"
 	case "$_ans" in [yY]*) return 0 ;; *) return 1 ;; esac
 }
 
-# 값 입력. 비면 다시 묻는다.
-# 프롬프트는 반드시 stderr 로 — 호출부가 $(ask ...) 로 stdout 을 잡아가므로
-# stdout 에 찍으면 프롬프트 문구가 값에 섞여 들어간다(실측으로 확인함).
+# 결과를 stdout 이 아니라 ASK_RESULT 로 돌려준다. $(ask ...) 로 받으면
+# 서브셸이라 ASKED 증가가 유실돼 진행 표시가 1/5 에서 멈춘다(실측).
 ask() {
-	_prompt="$1"; _val=""
-	while [ -z "$_val" ]; do
-		printf '  %s: ' "$_prompt" >&2
-		read -r _val || _eof
+	ASK_RESULT=""
+	{ _n; printf '%s: ' "$1"; } >&2
+	while :; do
+		read -r ASK_RESULT || _eof
+		[ -n "$ASK_RESULT" ] && break
+		printf '      (비워둘 수 없다) %s: ' "$1" >&2
 	done
-	printf '%s' "$_val"
 }
 
-# ── 1. Homebrew ──────────────────────────────────────────────────────
+# ── 0. Homebrew — sudo 를 물으므로 질문보다 먼저 끝낸다 ──────────────
 head_ "Homebrew"
 if command -v brew >/dev/null 2>&1; then
 	skip "이미 있음 ($(brew --prefix))"
 else
 	say "  설치한다. 관리자 암호를 묻는다."
 	/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-	# 이 셸에도 즉시 반영 (.zprofile 은 다음 로그인부터라 지금은 못 쓴다)
 	for p in /opt/homebrew /usr/local; do
 		[ -x "$p/bin/brew" ] && eval "$("$p/bin/brew" shellenv)" && break
 	done
 	did "설치 완료 ($(brew --prefix))"
 fi
 
-# ── 2. 서드파티 탭 신뢰 ──────────────────────────────────────────────
-# Brewfile 첫 줄이 이 탭이라, 신뢰가 없으면 brew bundle 이 거기서 멈춘다.
-head_ "탭 신뢰 (macism)"
-brew tap laishulu/homebrew >/dev/null 2>&1 || true
-if brew trust laishulu/homebrew >/dev/null 2>&1; then
-	did "laishulu/homebrew"
+# ── 1. 물어볼 것을 먼저 정한다 ───────────────────────────────────────
+# 이미 되어 있으면 묻지 않는다. 그래야 재실행이 조용하다.
+Q_GIT=0; Q_ASC=0; Q_MACISM=0; Q_GHOSTTY=0; Q_GH=0
+[ -f "$HOME/.gitconfig" ] || Q_GIT=1
+[ -f "$HOME/.zshenv" ]    || Q_ASC=1
+brew list macism >/dev/null 2>&1 || Q_MACISM=1
+if [ -f "$GHOSTTY_APPCFG" ]; then Q_GHOSTTY=1; fi   # `[ ] &&` 는 set -e 아래서 위험
+gh auth status >/dev/null 2>&1  || Q_GH=1
+
+TOTAL=$((Q_GIT * 2 + Q_ASC + Q_MACISM + Q_GHOSTTY + Q_GH))
+
+GIT_NAME=""; GIT_EMAIL=""; ASC_KEYID=""
+DO_MACISM=0; DO_GHOSTTY=0; DO_GH=0
+
+if [ "$TOTAL" -eq 0 ]; then
+	head_ "질문"
+	skip "물어볼 게 없다 — 전부 이미 되어 있음"
 else
-	skip "이미 신뢰됨"
+	head_ "질문 ${TOTAL}개 — 답하고 나면 끝까지 멈추지 않는다"
+
+	if [ "$Q_GIT" -eq 1 ]; then
+		ask "git 사용자 이름";  GIT_NAME=$ASK_RESULT
+		ask "git 이메일";      GIT_EMAIL=$ASK_RESULT
+	fi
+
+	if [ "$Q_ASC" -eq 1 ]; then
+		if ask_yn "이 기기에서 App Store Connect 배포(ship)를 하나?" n; then
+			ask "ASC_KEY_ID"; ASC_KEYID=$ASK_RESULT
+		fi
+	fi
+
+	if [ "$Q_MACISM" -eq 1 ]; then
+		# 서드파티 탭 신뢰는 보안 결정이라 묻는다. 거절하면 Brewfile 의
+		# tap 줄에서 brew bundle 이 멈추므로 그 사실을 같이 알린다.
+		say "      macism 은 nvim 의 한영 자동전환에 쓰인다. 서드파티 탭"
+		say "      (laishulu/homebrew) 을 신뢰해야 설치된다."
+		if ask_yn "설치할까?" y; then DO_MACISM=1; fi
+	fi
+
+	if [ "$Q_GHOSTTY" -eq 1 ]; then
+		say "      Ghostty 가 이 파일도 읽고, 이쪽이 나중에 읽혀 이긴다:"
+		say "      ${GHOSTTY_APPCFG#$HOME/}"
+		if ask_yn "밀어둘까?" y; then DO_GHOSTTY=1; fi
+	fi
+
+	if [ "$Q_GH" -eq 1 ]; then
+		if ask_yn "GitHub 에 로그인할까? (맨 마지막에 브라우저가 열린다)" y; then
+			DO_GH=1
+		fi
+	fi
 fi
 
-# ── 3. 추적하지 않는 로컬 파일 ───────────────────────────────────────
-# 공개 저장소라 신원·기기 종속 값은 여기서 만든다.
+# ── 2. 여기서부터는 묻지 않는다 ──────────────────────────────────────
+
+head_ "서드파티 탭"
+if [ "$DO_MACISM" -eq 1 ]; then
+	brew tap laishulu/homebrew >/dev/null 2>&1 || true
+	brew trust laishulu/homebrew >/dev/null 2>&1 || true
+	did "laishulu/homebrew 신뢰"
+elif [ "$Q_MACISM" -eq 0 ]; then
+	skip "macism 이 이미 있음"
+else
+	warn "건너뜀 — Brewfile 의 tap 줄에서 brew bundle 이 멈출 수 있다"
+	warn "  쓰지 않을 거면 Brewfile 에서 tap/macism 두 줄을 지울 것"
+fi
+
 head_ "~/.gitconfig"
-if [ -f "$HOME/.gitconfig" ]; then
+if [ "$Q_GIT" -eq 0 ]; then
 	skip "이미 있음 (건드리지 않음)"
 else
-	_name=$(ask "git 사용자 이름")
-	_email=$(ask "git 이메일")
 	cat > "$HOME/.gitconfig" <<EOF
 # 기기별 로컬 설정. 공유분은 아래 include 가 끌어온다.
 # include 를 맨 위에 두는 이유: 뒤에 오는 값이 이기므로, 아래에 같은 키를
@@ -83,14 +140,14 @@ else
 	path = ~/dotfiles/git/shared
 
 [user]
-	name = ${_name}
-	email = ${_email}
+	name = ${GIT_NAME}
+	email = ${GIT_EMAIL}
 EOF
 	did "만듦"
 fi
 
 head_ "~/.zshenv"
-if [ -f "$HOME/.zshenv" ]; then
+if [ "$Q_ASC" -eq 0 ]; then
 	skip "이미 있음 (건드리지 않음)"
 else
 	cat > "$HOME/.zshenv" <<'EOF'
@@ -101,69 +158,54 @@ path=($HOME/.local/bin $path)
 export ARCHIVE_DIR="$HOME/Library/Mobile Documents/iCloud~md~obsidian/Documents"
 EOF
 	did "만듦"
-
-	say ""
-	if ask_yn "이 기기에서 App Store Connect 배포(ship)를 하나?" n; then
-		_keyid=$(ask "ASC_KEY_ID")
+	if [ -n "$ASC_KEYID" ]; then
 		cat >> "$HOME/.zshenv" <<EOF
 
 # App Store Connect. Issuer ID 는 Keychain 에 두고 평문으로 적지 않는다.
-export ASC_KEY_ID=${_keyid}
-export ASC_KEY_PATH="\$HOME/.appstoreconnect/private_keys/AuthKey_${_keyid}.p8"
+export ASC_KEY_ID=${ASC_KEYID}
+export ASC_KEY_PATH="\$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEYID}.p8"
 [[ -n \$ASC_ISSUER_ID ]] || export ASC_ISSUER_ID="\$(security find-generic-password -s ASC_ISSUER_ID -w 2>/dev/null)"
 EOF
 		did "ASC 블록 추가"
-		ASC_TODO=1
 	fi
 fi
 
-# ── 4. 링크 + brew bundle ────────────────────────────────────────────
-# 실제 작업은 sync 가 한다 — 목록을 두 곳에 두지 않기 위해서다.
-head_ "링크 · 패키지"
-sh "$DOTFILES/bin/sync" | sed 's/^/  /' || true
-
-# ── 5. GitHub 인증 ───────────────────────────────────────────────────
-head_ "GitHub"
-if gh auth status >/dev/null 2>&1; then
-	skip "이미 로그인됨"
-elif ask_yn "지금 로그인할까? (브라우저가 열린다)" y; then
-	gh auth login
-	gh auth setup-git
-	did "로그인 + git credential helper"
-else
-	# 작은따옴표 — 큰따옴표 안의 백틱은 명령치환이라 실제로 실행된다.
-	skip '건너뜀 — 나중에 gh auth login'
-fi
-
-# ── 6. Ghostty 설정 충돌 ─────────────────────────────────────────────
-# App Support 쪽이 ~/.config/ghostty 보다 나중에 읽혀 이긴다.
 head_ "Ghostty"
-_gcfg="$HOME/Library/Application Support/com.mitchellh.ghostty/config"
-if [ -f "$_gcfg" ]; then
-	say "  이 파일이 ~/.config/ghostty/config 를 이긴다:"
-	say "    $_gcfg"
-	if ask_yn "밀어둘까?" y; then
-		mv "$_gcfg" "$_gcfg.bak-$(date +%Y%m%d)"
-		did "밀어둠 (.bak-$(date +%Y%m%d))"
-	else
-		skip "그대로 둠 — 테마·폰트가 이 저장소 설정과 다를 수 있다"
-	fi
+if [ "$DO_GHOSTTY" -eq 1 ]; then
+	mv "$GHOSTTY_APPCFG" "$GHOSTTY_APPCFG.bak-$(date +%Y%m%d)"
+	did "App Support 설정을 밀어둠 (.bak-$(date +%Y%m%d))"
+elif [ "$Q_GHOSTTY" -eq 1 ]; then
+	warn "그대로 둠 — 테마·폰트가 이 저장소 설정과 다를 수 있다"
 else
 	skip "충돌 없음"
 fi
 
-# ── 7. nvim 플러그인 ─────────────────────────────────────────────────
+# 링크·패키지는 sync 가 한다 — 목록을 두 곳에 두지 않기 위해서다.
+head_ "링크 · 패키지"
+sh "$DOTFILES/bin/sync" | sed 's/^/  /' || true
+
 head_ "nvim"
 if command -v nvim >/dev/null 2>&1; then
-	# 첫 실행은 vim.pack 이 플러그인 9개를 내려받아 몇 분 걸릴 수 있다.
 	say "  플러그인을 내려받는다 (첫 실행이면 몇 분)"
 	nvim --headless +qa >/dev/null 2>&1 || true
 	did "동기화 완료"
 else
-	skip "nvim 이 없다 — brew bundle 이 실패했을 수 있다"
+	warn "nvim 이 없다 — brew bundle 이 실패했을 수 있다"
 fi
 
-# ── 8. 검증 ──────────────────────────────────────────────────────────
+# ── 3. 브라우저가 필요한 것만 마지막에 ───────────────────────────────
+head_ "GitHub"
+if [ "$DO_GH" -eq 1 ]; then
+	gh auth login
+	gh auth setup-git
+	did "로그인 + git credential helper"
+elif [ "$Q_GH" -eq 0 ]; then
+	skip "이미 로그인됨"
+else
+	skip '건너뜀 — 나중에 gh auth login'
+fi
+
+# ── 4. 검증 ──────────────────────────────────────────────────────────
 head_ "검증"
 if sh "$DOTFILES/bin/sync" >/dev/null 2>&1; then
 	say "  ✓ 이상 없음"
@@ -174,7 +216,7 @@ fi
 
 say ""
 say "끝났다. 새 셸을 열거나: exec zsh"
-if [ "${ASC_TODO:-0}" = "1" ]; then
+if [ -n "$ASC_KEYID" ]; then
 	say ""
 	say "ASC 는 두 가지가 더 필요하다 (스크립트가 못 하는 것):"
 	say "  1. 개인키를 ~/.appstoreconnect/private_keys/ 로 복사 (다른 기기에서)"

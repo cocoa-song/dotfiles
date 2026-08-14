@@ -28,11 +28,20 @@ git clone https://github.com/hoemoon/dotfiles.git ~/dotfiles
 ~/dotfiles/bin/setup
 ```
 
-That is the whole procedure. `setup` stops to ask a few things — the admin
-password (installing Homebrew), git name and email, whether this machine does App
-Store Connect releases, GitHub login, and whether to move an existing Ghostty
-config out of the way. Everything else it does on its own. Re-running is safe;
-anything already done is skipped.
+That is the whole procedure. **`setup` asks everything up front, then runs to
+completion without stopping.** The questions are numbered so you know how many are
+left, and anything already configured is not asked about at all — a second run on
+a finished machine asks nothing.
+
+What it may ask: git name and email, whether this machine does App Store Connect
+releases, whether to install `macism` (which requires trusting a third-party brew
+tap), whether to move an existing Ghostty config aside, and whether to log in to
+GitHub.
+
+Two things sit outside that block by necessity. Installing Homebrew needs an admin
+password, so it happens *before* the questions; `gh auth login` needs a browser, so
+it happens *last*. `brew bundle` may also prompt for a password when installing
+casks.
 
 Two things `setup` cannot do, reported at the end only when they apply: copying
 the ASC private key (`.p8`) from another machine, and registering the Issuer ID in
