@@ -182,7 +182,7 @@ fi
 
 # 링크·패키지는 sync 가 한다 — 목록을 두 곳에 두지 않기 위해서다.
 head_ "링크 · 패키지"
-sh "$DOTFILES/bin/sync" | sed 's/^/  /' || true
+"$DOTFILES/bin/sync" | sed 's/^/  /' || true
 
 head_ "nvim"
 if command -v nvim >/dev/null 2>&1; then
@@ -207,11 +207,11 @@ fi
 
 # ── 4. 검증 ──────────────────────────────────────────────────────────
 head_ "검증"
-if sh "$DOTFILES/bin/sync" >/dev/null 2>&1; then
+if "$DOTFILES/bin/sync" >/dev/null 2>&1; then
 	say "  ✓ 이상 없음"
 else
 	say "  아래를 확인할 것:"
-	sh "$DOTFILES/bin/sync" 2>&1 | grep '⚠' | sed 's/^/  /' || true
+	"$DOTFILES/bin/sync" 2>&1 | grep '⚠' | sed 's/^/  /' || true
 fi
 
 say ""
