@@ -3,25 +3,41 @@
 Three files, split by *when zsh reads them*. Getting this wrong is the most
 common way for configuration to look present but be invisible.
 
-| File | Read by | Holds |
-|---|---|---|
-| `zshenv` **(not tracked)** | **every** zsh — scripts, `zsh -c`, non-interactive | PATH, environment variables |
-| `zprofile` | login shells, once | `brew shellenv`, PATH precedence |
-| `zshrc` | interactive shells | plugins, completion, history, aliases, keybindings |
+| Local file | Sources | Read by | Holds |
+|---|---|---|---|
+| `~/.zshenv` | `zsh/env.zsh` | **every** zsh — scripts, `zsh -c`, non-interactive | PATH, environment variables |
+| `~/.zprofile` | `zsh/profile.zsh` | login shells, once | `brew shellenv`, PATH precedence |
+| `~/.zshrc` | `zsh/rc.zsh` | interactive shells | plugins, completion, history, aliases, keybindings |
 
-`bin/setup` writes `~/.zshenv`; the other two are symlinks into this directory.
+**The local files are not symlinks, and that is deliberate.** They are the files
+every installer appends to — OrbStack, nvm, conda, rustup, gcloud. OrbStack even
+states *"This won't be added again if you remove it."* If the repo owned
+`~/.zprofile`, adopting these dotfiles on a machine would silently delete that
+line and break the OrbStack CLI with no way to notice.
 
-## Why `~/.zshenv` is not in this repository
+So each local file is real, machine-specific, and carries one `source` line
+pointing at the shared version. Installer lines and this repo's config coexist.
+`bin/sync` only checks that the `source` line is present and appends it if not —
+appending destroys nothing, so it never has to stop and ask.
 
-It carries machine-bound values — the App Store Connect key ID and private-key
-path — and this repo is public. `bin/setup` asks for what it needs and writes the
-file. The shape:
+Anything edited in `~/.zshrc` stays on that machine. To change both machines,
+edit `zsh/rc.zsh`.
+
+`~/.zsh_plugins.txt` does not exist: `antidote load` takes the bundle path
+directly, so `rc.zsh` points it at `zsh/zsh_plugins.txt` in the repo. The
+generated static bundle lands in `~/.zsh_plugins.zsh`, which is machine-local by
+nature — it contains absolute paths.
+
+## Machine-bound values live in `~/.zshenv`, below the source line
+
+The shared half (`zsh/env.zsh`) carries PATH and `ARCHIVE_DIR` — same on every
+machine, no secrets. Anything bound to one machine goes in the local file under
+the `source` line, because this repo is public. `bin/setup` writes it:
 
 ```zsh
 # ~/.zshenv — read by every zsh. No output, no slow work.
-typeset -U path PATH
-path=($HOME/.local/bin $path)
-export ARCHIVE_DIR="$HOME/Library/Mobile Documents/iCloud~md~obsidian/Documents"
+source ~/dotfiles/zsh/env.zsh
+
 export ASC_KEY_ID=... ASC_KEY_PATH=...
 [[ -n $ASC_ISSUER_ID ]] || export ASC_ISSUER_ID="$(security find-generic-password -s ASC_ISSUER_ID -w 2>/dev/null)"
 ```
@@ -104,7 +120,7 @@ rm ~/.zcompdump && exec zsh
 
 Ghostty injects its shell integration only into shells it spawns *directly* —
 not into zellij or tmux panes, not into `exec zsh`. Since zellij is in daily use,
-`zshrc` sources the integration explicitly when `GHOSTTY_RESOURCES_DIR` is set.
+`rc.zsh` sources the integration explicitly when `GHOSTTY_RESOURCES_DIR` is set.
 Re-sourcing in a directly-spawned shell is harmless; the script guards itself with
 `_ghostty_state`.
 

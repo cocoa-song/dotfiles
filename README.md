@@ -13,9 +13,17 @@ starship.toml  Prompt
 Brewfile       Every external tool the above depends on
 ```
 
-`~/.config/nvim`, `~/.config/ghostty`, `~/.config/starship.toml`,
-`~/.config/git/ignore`, `~/.zshrc`, `~/.zprofile`, and `~/.zsh_plugins.txt` are
-all symlinks into this repository.
+Two mechanisms, chosen by whether anything else writes to the file:
+
+- **Symlinked** — `~/.config/nvim`, `~/.config/ghostty`, `~/.config/starship.toml`,
+  `~/.config/git/ignore`. Nothing but this repo touches those, so the repo owns
+  them outright.
+- **Referenced** — `~/.zshenv`, `~/.zprofile`, `~/.zshrc`, `~/.gitconfig` stay real
+  local files that `source` (or `[include]`) the shared version. Installers append
+  to these constantly — OrbStack, nvm, conda, rustup — and OrbStack's own comment
+  says *"This won't be added again if you remove it."* A repo that owned those
+  files would silently destroy such lines. Appending a reference destroys nothing,
+  which is why `sync` can fix them without asking.
 
 **The scripts are the source of truth.** These documents explain *why*; when a
 document and a script disagree, the script is right. Do not hand-execute a

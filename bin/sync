@@ -29,19 +29,25 @@ from _ui import UI  # noqa: E402
 HOME = Path.home()
 DOTFILES = _bootstrap.DOTFILES
 
+# 심링크로 거는 것 — 남이 건드리지 않는 파일·디렉터리만.
 LINKS = [
     ("nvim", HOME / ".config/nvim"),
     ("ghostty", HOME / ".config/ghostty"),
     ("starship.toml", HOME / ".config/starship.toml"),
     ("git/ignore", HOME / ".config/git/ignore"),
-    ("zsh/zshrc", HOME / ".zshrc"),
-    ("zsh/zprofile", HOME / ".zprofile"),
-    ("zsh/zsh_plugins.txt", HOME / ".zsh_plugins.txt"),
+]
+
+# source 로 참조하는 것 — 설치기(OrbStack·nvm·conda…)가 덧붙이는 파일이라
+# 저장소가 통째로 소유하면 안 된다. 한 줄이 있는지만 보고, 없으면 덧붙인다.
+# 덧붙이기는 파괴적이지 않으므로 사람에게 물어볼 일이 없다.
+SOURCES = [
+    (HOME / ".zshenv", "zsh/env.zsh", "이 기기의 환경변수"),
+    (HOME / ".zprofile", "zsh/profile.zsh", "이 기기의 로그인 셸 설정"),
+    (HOME / ".zshrc", "zsh/rc.zsh", "이 기기의 대화형 셸 설정"),
 ]
 
 # 추적하지 않는 로컬 파일. 존재만 본다 — 내용은 신원 정보라 들여다보지 않는다.
 LOCAL_FILES = [
-    (HOME / ".zshenv", "zsh"),
     (HOME / ".gitconfig", "git"),
 ]
 
@@ -107,6 +113,34 @@ def step_links(ui: UI) -> None:
             s.skip("이상 없음")
 
 
+def step_sources(ui: UI) -> None:
+    """공유 설정을 참조하는 한 줄이 있는지 본다. 없으면 덧붙인다.
+
+    심링크와 달리 남의 파일을 소유하지 않는다 — OrbStack 이 ~/.zprofile 에
+    써넣은 줄("This won't be added again if you remove it")을 지우지 않고
+    그 옆에 우리 줄을 둘 수 있다.
+    """
+    with ui.step("공유 설정 참조") as s:
+        added = []
+        for path, rel, title in SOURCES:
+            line = "source ~/dotfiles/{}".format(rel)
+            text = path.read_text() if path.is_file() else ""
+            if rel in text:
+                continue
+            with path.open("a") as f:
+                if text and not text.endswith("\n"):
+                    f.write("\n")
+                f.write("\n# {} — 공유분은 아래 source 가 끌어온다.\n{}\n"
+                        .format(title, line))
+            added.append(tilde(path))
+        if added:
+            s.ok("{}개에 추가".format(len(added)))
+            for a in added:
+                ui.note(a)
+        else:
+            s.skip("이상 없음")
+
+
 def step_brew(ui: UI) -> None:
     with ui.step("패키지") as s:
         brewfile = DOTFILES / "Brewfile"
@@ -162,6 +196,7 @@ def main() -> int:
     ui.title("dotfiles sync", tilde(DOTFILES))
     step_pull(ui)
     step_links(ui)
+    step_sources(ui)
     step_brew(ui)
     step_local(ui)
     return ui.done("이상 없음")

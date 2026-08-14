@@ -12,7 +12,10 @@ export ANTIDOTE_HOME=$HOME/.zsh/plugins
 _antidote=${HOMEBREW_PREFIX:-/opt/homebrew}/opt/antidote/share/antidote/antidote.zsh
 if [[ -r $_antidote ]]; then
   source $_antidote
-  antidote load
+  # 번들 목록은 저장소 파일을 직접 가리킨다 — ~/.zsh_plugins.txt 심링크가
+  # 필요 없다. 생성물(정적 번들)은 기기별 경로를 담으므로 홈에 둔다.
+  antidote load ${DOTFILES:-$HOME/dotfiles}/zsh/zsh_plugins.txt \
+                ${ZDOTDIR:-$HOME}/.zsh_plugins.zsh
 fi
 unset _antidote
 

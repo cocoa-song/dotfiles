@@ -70,12 +70,26 @@ GITCONFIG = """\
 \temail = {email}
 """
 
+# zsh 는 심링크가 아니라 source 로 참조한다. ~/.zshrc·~/.zprofile 은
+# 설치기(OrbStack·nvm·conda…)가 덧붙이는 파일이라 저장소가 소유하면 안 된다.
 ZSHENV = """\
-# 모든 zsh 가 읽는다 (스크립트·비대화형 포함). 출력·무거운 작업 금지.
-typeset -U path PATH
-path=($HOME/.local/bin $path)
+# 이 기기의 환경변수. 공유분은 아래 source 가 끌어온다.
+# 기기에 묶인 값(자격증명 등)만 그 아래에 적는다 — 이 파일은 추적되지 않는다.
+source ~/dotfiles/zsh/env.zsh
+"""
 
-export ARCHIVE_DIR="$HOME/Library/Mobile Documents/iCloud~md~obsidian/Documents"
+ZPROFILE = """\
+# 이 기기의 로그인 셸 설정. 공유분은 아래 source 가 끌어온다.
+# 설치기들이 이 파일에 덧붙인다 — 그러라고 참조 방식을 쓴다.
+source ~/dotfiles/zsh/profile.zsh
+"""
+
+ZSHRC = """\
+# 이 기기의 대화형 셸 설정. 공유분은 아래 source 가 끌어온다.
+#
+# ⚠ 여기서 고친 건 이 기기에만 남는다. 두 기기에 다 반영하려면
+#   ~/dotfiles/zsh/rc.zsh 를 고칠 것.
+source ~/dotfiles/zsh/rc.zsh
 """
 
 ZSHENV_ASC = """
@@ -246,14 +260,26 @@ def step_gitconfig(ui: UI, plan: Plan, a: Answers) -> None:
         s.ok("{} <{}>".format(a.name, a.email))
 
 
-def step_zshenv(ui: UI, plan: Plan, a: Answers) -> None:
-    with ui.step("~/.zshenv") as s:
-        if not plan.zshenv:
+def step_zsh(ui: UI, plan: Plan, a: Answers) -> None:
+    """zsh 로컬 파일 3개. 없을 때만 만들고, 있으면 sync 가 source 줄만 본다."""
+    with ui.step("zsh 로컬 파일") as s:
+        made = []
+        if plan.zshenv:
+            text = ZSHENV + (ZSHENV_ASC.format(key_id=a.asc_key_id)
+                             if a.asc_key_id else "")
+            (HOME / ".zshenv").write_text(text)
+            made.append("~/.zshenv" + (" (ASC 포함)" if a.asc_key_id else ""))
+        for name, body in (("​.zprofile", ZPROFILE), (".zshrc", ZSHRC)):
+            path = HOME / name.strip("​")
+            if not path.is_file():
+                path.write_text(body)
+                made.append("~/" + name.strip("​"))
+        if made:
+            s.ok("{}개 만듦".format(len(made)))
+            for m in made:
+                ui.note(m)
+        else:
             s.skip("이미 있음")
-            return
-        text = ZSHENV + (ZSHENV_ASC.format(key_id=a.asc_key_id) if a.asc_key_id else "")
-        (HOME / ".zshenv").write_text(text)
-        s.ok("ASC 포함" if a.asc_key_id else "만듦")
 
 
 def step_ghostty(ui: UI, plan: Plan, a: Answers) -> None:
@@ -354,7 +380,7 @@ def main() -> int:
 
     step_tap(ui, plan, a)
     step_gitconfig(ui, plan, a)
-    step_zshenv(ui, plan, a)
+    step_zsh(ui, plan, a)
     step_ghostty(ui, plan, a)
     step_sync(ui)
     step_nvim(ui)
