@@ -21,10 +21,16 @@ all symlinks into this repository.
 document and a script disagree, the script is right. Do not hand-execute a
 procedure that `bin/setup` or `bin/sync` already performs.
 
-Both are Python, standard library only, and target the Python 3.9 that ships with
-the Command Line Tools — on a fresh machine that is the only one present, and
-`bin/sync` is what installs everything else. They take no arguments beyond the
-answers `setup` would otherwise ask for; see `bin/setup --help`.
+Both are Python and run on **Homebrew's** Python, never the system one — the
+CLT's 3.9 is an Apple byproduct that is already end-of-life, and pinning to brew
+keeps both machines on the same interpreter. `bin/setup` installs Homebrew and
+that Python if missing, creates `.venv`, and re-executes itself there; `bin/sync`
+uses that environment and tells you to run `setup` first if it is absent.
+Dependencies are pinned in `bin/requirements.txt` (just `rich`, for the output).
+
+Every answer `setup` would ask for can be given as a flag instead, so it can run
+unattended — see `bin/setup --help`. Add `-v` to either script to see the full
+output of anything that failed.
 
 ## New machine
 
@@ -48,10 +54,8 @@ password, so it happens *before* the questions; `gh auth login` needs a browser,
 it happens *last*. `brew bundle` may also prompt for a password when installing
 casks.
 
-Every answer can be supplied as a flag instead, in which case nothing is asked —
-useful for automation, and it is how the script is tested:
-
 ```bash
+# unattended, for a second machine or a rebuild
 ~/dotfiles/bin/setup --name "..." --email "..." --no-asc --macism --no-gh
 ```
 
